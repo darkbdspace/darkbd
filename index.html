@@ -182,7 +182,7 @@
             font-size: 1.05rem;
         }
 
-        /* ==================== PROFILE IMAGE GLOW EFFECT ==================== */
+        /* ==================== PROFILE IMAGE GLOW & ROTATION EFFECT ==================== */
         .profile-card {
             position: relative;
             display: flex;
@@ -190,43 +190,74 @@
             align-items: center;
         }
 
-        /* 1.5px Sun Theme Gradient Border & Glow */
+        /* ঘোরানো রিং এবং গ্লো ইফেক্ট */
         .profile-img-wrapper {
             position: relative;
-            width: 320px;
-            height: 320px;
+            width: 300px;
+            height: 300px;
             border-radius: 50%;
-            padding: 1.5px; /* Border Thickness */
-            background: linear-gradient(135deg, #ff7e5f, #feb47b, #ff2a6d);
-            background-size: 200% 200%;
-            animation: sunGlow 3s ease infinite alternate;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: conic-gradient(from 0deg, #ffd700, #ff7e5f, #ffe600, #ff7e5f, #ffd700);
+            animation: rotateGlow 3.5s linear infinite;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5),
+                        0 0 40px rgba(255, 126, 95, 0.3);
         }
 
-        .profile-img-wrapper img {
+        @keyframes rotateGlow {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ইনার কন্টেইনার (ছবি ধারণের জন্য) */
+        .img-container {
+            width: calc(100% - 10px); /* ৮-১০px বর্ডার পুরুত্ব */
+            height: calc(100% - 10px);
+            border-radius: 50%;
+            overflow: hidden;
+            position: relative;
+            background: var(--bg-primary);
+        }
+
+        .img-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             border-radius: 50%;
             display: block;
+            /* রিং ঘোড়ার সময় ছবিটি যেন সোজা থাকে */
+            animation: counterRotate 3.5s linear infinite;
         }
 
-        /* Sun Gradient Glow Animation */
-        @keyframes sunGlow {
-            0% {
-                background-position: 0% 50%;
-                box-shadow: 0 0 15px rgba(255, 126, 95, 0.6),
-                            0 0 30px rgba(254, 180, 123, 0.4);
-            }
-            50% {
-                background-position: 100% 50%;
-                box-shadow: 0 0 25px rgba(255, 126, 95, 0.9),
-                            0 0 45px rgba(255, 42, 109, 0.7);
-            }
+        @keyframes counterRotate {
             100% {
-                background-position: 0% 50%;
-                box-shadow: 0 0 15px rgba(255, 126, 95, 0.6),
-                            0 0 30px rgba(254, 180, 123, 0.4);
+                transform: rotate(-360deg);
             }
+        }
+
+        /* অনলাইন গ্রীন ডট (Status Badge) */
+        .status-badge {
+            position: absolute;
+            bottom: 12px;
+            right: 25px;
+            width: 48px;
+            height: 48px;
+            background-color: var(--bg-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .status-dot {
+            width: 24px;
+            height: 24px;
+            background-color: #2ecc71;
+            border-radius: 50%;
+            box-shadow: 0 0 12px #2ecc71;
         }
 
         /* ==================== SKILLS & EXP ==================== */
@@ -349,8 +380,18 @@
                 font-size: 2.5rem;
             }
             .profile-img-wrapper {
-                width: 250px;
-                height: 250px;
+                width: 240px;
+                height: 240px;
+            }
+            .status-badge {
+                width: 40px;
+                height: 40px;
+                bottom: 8px;
+                right: 12px;
+            }
+            .status-dot {
+                width: 20px;
+                height: 20px;
             }
             .nav-right {
                 flex-direction: column;
@@ -386,10 +427,17 @@
                    Engineered for evolution: Architecting next-gen systems with robust backend pipelines, engaging Python applications, and adaptive AI & Machine Learning technologies.
                 </p>
             </div>
+            
+            <!-- ANIMATED PROFILE CARD -->
             <div class="profile-card">
                 <div class="profile-img-wrapper">
-                    <!-- আপনার ছবির ফাইল পাথ বা ইউআরএল দিয়ে পরিবর্তন করুন -->
-                    <img src="avatar2.jpg" alt="Dark Profile Picture">
+                    <div class="img-container">
+                        <img src="avatar2.jpg" alt="Dark Profile Picture">
+                    </div>
+                </div>
+                <!-- ONLINE STATUS BADGE -->
+                <div class="status-badge">
+                    <div class="status-dot"></div>
                 </div>
             </div>
         </div>
