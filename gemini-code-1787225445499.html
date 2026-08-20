@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark | Cyber Space Hunter</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ==================== CSS VARIABLES & THEMES ==================== */
+        :root {
+            /* Default: Dark Theme */
+            --bg-primary: #0a0c10;
+            --bg-secondary: #12161f;
+            --bg-card: #181e2a;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent: #00f2fe;
+            --accent-glow: rgba(0, 242, 254, 0.25);
+            --border: #2d3748;
+            --font-head: 'Orbitron', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-code: 'Fira Code', monospace;
+        }
+
+        /* Sun Gradient Theme */
+        [data-theme="sun-gradient"] {
+            --bg-primary: #1a0b2e;
+            --bg-secondary: #28123d;
+            --bg-card: #3b154c;
+            --text-primary: #fff5ea;
+            --text-secondary: #ffd1a9;
+            --accent: #ff7e5f;
+            --accent-glow: rgba(255, 126, 95, 0.35);
+            --border: #5c226e;
+        }
+
+        /* Light Theme */
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --accent: #2563eb;
+            --accent-glow: rgba(37, 99, 235, 0.15);
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ==================== NAVBAR ==================== */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(10, 12, 16, 0.7);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            border-bottom: 1px solid var(--border);
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 2rem;
+        }
+
+        .logo {
+            font-family: var(--font-head);
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: 2px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .theme-switcher {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--bg-secondary);
+            padding: 0.4rem;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .theme-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .theme-btn.active {
+            background: var(--accent);
+            color: #000;
+        }
+
+        /* ==================== HERO SECTION ==================== */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 2rem 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .hero-title {
+            font-family: var(--font-head);
+            font-size: 3.5rem;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+        }
+
+        .hero-title span {
+            color: var(--accent);
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .hero-subtitle {
+            font-family: var(--font-code);
+            color: var(--accent);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+            background: var(--bg-card);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .bio-tag {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+
+        .hero-description {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 1.05rem;
+        }
+
+        .profile-card {
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+
+        .img-placeholder {
+            width: 320px;
+            height: 320px;
+            border-radius: 20px;
+            background: var(--bg-card);
+            border: 2px dashed var(--accent);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            box-shadow: 0 0 30px var(--accent-glow);
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .img-placeholder i {
+            font-size: 4rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        /* ==================== SKILLS & EXP ==================== */
+        .section {
+            padding: 5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-family: var(--font-head);
+            font-size: 2.2rem;
+            margin-bottom: 2.5rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 50%;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 2rem;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.8rem;
+            color: var(--text-primary);
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 2.5rem;
+        }
+
+        .stat-num {
+            font-family: var(--font-head);
+            font-size: 3.5rem;
+            color: var(--accent);
+            font-weight: 900;
+        }
+
+        /* ==================== SOCIAL LINKS ==================== */
+        .social-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .social-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 1.2rem;
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .social-card i {
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+
+        .social-card:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent);
+        }
+
+        /* ==================== FOOTER ==================== */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .hero-container {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            .img-placeholder {
+                width: 250px;
+                height: 250px;
+                margin: 0 auto;
+            }
+            .nav-right {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+    <!-- NAVBAR -->
+    <header>
+        <nav>
+            <a href="#" class="logo">&lt;DARK/&gt;</a>
+            <div class="nav-right">
+                <div class="theme-switcher">
+                    <button class="theme-btn active" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i> Dark</button>
+                    <button class="theme-btn" onclick="setTheme('sun-gradient')"><i class="fa-solid fa-sun"></i> Sun</button>
+                    <button class="theme-btn" onclick="setTheme('light')"><i class="fa-solid fa-lightbulb"></i> Light</button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-text">
+                <div class="hero-subtitle">// SYSTEM ARCHITECT & BUILDER</div>
+                <h1 class="hero-title">Hello, I'm <span>DARK</span></h1>
+                <div class="bio-tag">🛡️ Cyber Space Hunter</div>
+                <p class="hero-description">
+                    Building next-generation Web3 experiences, scalable backend systems, robust Python applications, and constantly evolving through Self-Learning AI & Machine Learning.
+                </p>
+            </div>
+            <div class="profile-card">
+                <div class="img-placeholder">
+                    <i class="fa-solid fa-user-astronaut"></i>
+                    <p><b>Profile Picture Placeholder</b></p>
+                    <small>Update image later in source code</small>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- EXPERIENCE & STATS -->
+    <section class="section">
+        <h2 class="section-title">Overview</h2>
+        <div class="grid">
+            <div class="card stat-card">
+                <div class="stat-num">02+</div>
+                <p>Years of Dedicated Experience</p>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-terminal" style="color:var(--accent)"></i> Core Focus</h3>
+                <p>Specialized in Web3 decentralized architectures, intelligent automation, and full-stack development pipelines.</p>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-brain" style="color:var(--accent)"></i> AI & ML Journey</h3>
+                <p>Actively researching and building self-learned Machine Learning models & AI integrations.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SKILLS SECTION -->
+    <section class="section">
+        <h2 class="section-title">Technical Expertise</h2>
+        <div class="grid">
+            <div class="card">
+                <h3><i class="fa-brands fa-python" style="color:var(--accent)"></i> Python Development</h3>
+                <p>Automation, Scripting, Data manipulation, and Backend frameworks.</p>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-code" style="color:var(--accent)"></i> Frontend Web</h3>
+                <p>Building responsive, modern, and interactive user interfaces.</p>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-server" style="color:var(--accent)"></i> Backend Architecture</h3>
+                <p>APIs, Database management, Server-side logic, and System design.</p>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-cubes" style="color:var(--accent)"></i> Web3 Contribution</h3>
+                <p>Smart contract interaction, Testnet participation, and DApp ecosystem contribution.</p>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-robot" style="color:var(--accent)"></i> Self Learning AI + ML</h3>
+                <p>Model exploration, AI tooling, and continuous self-driven technical evolution.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONNECT / SOCIAL LINKS -->
+    <section class="section">
+        <h2 class="section-title">Connect With Me</h2>
+        <div class="social-grid">
+            <a href="#" class="social-card">
+                <i class="fa-brands fa-github"></i>
+                <span>GitHub</span>
+            </a>
+            <a href="#" class="social-card">
+                <i class="fa-brands fa-twitter"></i>
+                <span>Twitter / X</span>
+            </a>
+            <a href="#" class="social-card">
+                <i class="fa-brands fa-discord"></i>
+                <span>Discord</span>
+            </a>
+            <a href="#" class="social-card">
+                <i class="fa-brands fa-telegram"></i>
+                <span>Telegram</span>
+            </a>
+            <a href="#" class="social-card">
+                <i class="fa-solid fa-envelope"></i>
+                <span>Email</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>&copy; 2026 Dark. All Rights Reserved. Built with Cyber Space Energy.</p>
+    </footer>
+
+    <!-- JAVASCRIPT FOR THEME SWITCHER -->
+    <script>
+        function setTheme(themeName) {
+            document.body.setAttribute('data-theme', themeName);
+            
+            // Update active state of buttons
+            const buttons = document.querySelectorAll('.theme-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            event.currentTarget.classList.add('active');
+        }
+    </script>
+</body>
+</html>
