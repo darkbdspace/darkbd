@@ -507,15 +507,15 @@
         (function generateSunGlowFavicon() {
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.src = 'icon.png'; // আপনার আইকন ফাইলের নাম ও পাথ
+            img.src = 'icon.png'; // আপনার আইকন ফাইলের নাম
     
             img.onload = function() {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // ক্যানভাস সাইজ
-                const size = 64; 
-                const padding = 10;
+                // স্পেস বাড়ানোর জন্য ক্যানভাস সাইজ ১২৮px করা হয়েছে
+                const size = 128; 
+                const padding = 22; // গ্লো ছড়ানোর পর্যাপ্ত জায়গা
                 canvas.width = size;
                 canvas.height = size;
     
@@ -523,29 +523,41 @@
                 const centerY = size / 2;
                 const radius = (size - padding * 2) / 2;
     
-                // ১. সফট সান গ্লো (Sun Glow Effect)
-                ctx.shadowColor = '#ff7e5f'; // Sun Orange Glow
-                ctx.shadowBlur = 12;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
-    
-                // ২. ব্যাকগ্রাউন্ডে গ্লো শেপ তৈরি
+                /* ================= ১. গাঢ় ও স্পষ্ট সান গ্লো (DEEP SUN GLOW) ================= */
+                // ১ম লেয়ার: ওয়াইড সফট অরেঞ্জ গ্লো
+                ctx.shadowColor = '#ff7e5f';
+                ctx.shadowBlur = 24;
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
                 ctx.fillStyle = '#ff7e5f';
                 ctx.fill();
     
-                // ৩. আইকন ক্লিপিং ও ইমেজ ড্র
-                ctx.shadowBlur = 0; // মূল ছবিতে যেন ব্লাঙ্ক না আসে
-                ctx.save();
+                // ২য় লেয়ার: ব্রাইট সান ইয়েলো গ্লো (বাইরে গাঢ় দেখানোর জন্য)
+                ctx.shadowColor = '#ffd200';
+                ctx.shadowBlur = 12;
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffd200';
+                ctx.fill();
+    
+                /* ================= ২. স্পষ্ট গ্লোয়িং রিং (VISIBLE GLOW RING) ================= */
+                ctx.shadowColor = '#ff4500';
+                ctx.shadowBlur = 8;
+                ctx.strokeStyle = '#ffa500';
+                ctx.lineWidth = 4; // রিংয়ের থিকনেস
+                ctx.stroke();
+    
+                /* ================= ৩. আইকন ক্লিপিং ও ইমেজ ড্র ================= */
+                ctx.shadowBlur = 0; // ছবির ওপর যেন বাড়তি শ্যাডো না পড়ে
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius - 1, 0, Math.PI * 2);
                 ctx.closePath();
                 ctx.clip();
                 ctx.drawImage(img, padding, padding, size - padding * 2, size - padding * 2);
                 ctx.restore();
     
-                // ৪. ফ্যাভআইকন রিপ্লেস
+                /* ================= ৪. ফ্যাভআইকন আপডেট ================= */
                 const favicon = document.getElementById('dynamic-favicon');
                 if (favicon) {
                     favicon.href = canvas.toDataURL('image/png');
