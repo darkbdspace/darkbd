@@ -502,50 +502,54 @@
             }
         }
     </script>
+    <!-- ফুটারের ঠিক নিচে </body> ট্যাগের উপরে এই স্ক্রিপ্টটি বসান -->
     <script>
-    const img = new Image();
-    img.src = 'icon.png'; // আপনার আইকন ফাইলের নাম
-    img.onload = function() {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const padding = 15; // গ্লো ছড়ানোর জন্য বাড়তি জায়গা
-        
-        canvas.width = img.width + padding * 2;
-        canvas.height = img.height + padding * 2;
-
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const radius = img.width / 2;
-
-        // ১. সফট গ্লো শ্যাডো তৈরি
-        ctx.shadowColor = '#00f2fe'; // আপনার পছন্দমতো গ্লো কালার (Hex/RGB)
-        ctx.shadowBlur = 12;         // গ্লো কতটা ছড়াবে
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-
-        // ২. গোল মাস্ক ও গ্লো ড্র করা
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#00f2fe';
-        ctx.fill();
-
-        // ৩. আইকন ক্লিপিং ও ইমেজ ড্র করা
-        ctx.shadowBlur = 0; // ছবির ওপর যেন বাড়তি শ্যাডো না পড়ে
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        ctx.drawImage(img, padding, padding, img.width, img.height);
-        ctx.restore();
-
-        // ৪. ডায়নামিকালি ফ্যাভআইকন আপডেট
-        let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-        link.type = 'image/png';
-        link.rel = 'shortcut icon';
-        link.href = canvas.toDataURL('image/png');
-        document.getElementsByTagName('head')[0].appendChild(link);
-    };
-</script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const img = new Image();
+            img.src = 'icon.png'; // আপনার আইকন ফাইলের নাম
+            
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const padding = 20; // গ্লো ছড়ানোর বাড়তি স্পেস
+                
+                canvas.width = img.width + padding * 2;
+                canvas.height = img.height + padding * 2;
+    
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = img.width / 2;
+    
+                // ১. সান গ্লো কালার ইফেক্ট (Orange-Yellow Glow)
+                ctx.shadowColor = '#ff7e5f'; // Sun Orange Color
+                ctx.shadowBlur = 18;         // গ্লো ছড়ানোর পরিমাণ
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+    
+                // ২. ব্যাগ্রাউন্ডে গ্লো লেয়ার ড্র করা
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff7e5f';
+                ctx.fill();
+    
+                // ৩. ছবির ওপর থেকে শ্যাডো বন্ধ করে আইকন ড্র করা
+                ctx.shadowBlur = 0;
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                ctx.drawImage(img, padding, padding, img.width, img.height);
+                ctx.restore();
+    
+                // ৪. ফ্যাভআইকন আপডেট
+                let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+                link.type = 'image/png';
+                link.rel = 'shortcut icon';
+                link.href = canvas.toDataURL('image/png');
+                document.getElementsByTagName('head')[0].appendChild(link);
+            };
+        });
+    </script>
 </body>
 </html>
