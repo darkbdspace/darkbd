@@ -182,7 +182,7 @@
             font-size: 1.05rem;
         }
 
-        /* ==================== PROFILE IMAGE GLOW & ROTATION EFFECT ==================== */
+        /* ==================== PROFILE IMAGE (ANALOG 5PX SOFT GLOW) ==================== */
         .profile-card {
             position: relative;
             display: flex;
@@ -190,7 +190,6 @@
             align-items: center;
         }
 
-        /* ঘোরানো রিং এবং গ্লো ইফেক্ট */
         .profile-img-wrapper {
             position: relative;
             width: 300px;
@@ -199,22 +198,23 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: conic-gradient(from 0deg, #ffd700, #ff7e5f, #ffe600, #ff7e5f, #ffd700);
-            animation: rotateGlow 3.5s linear infinite;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5),
-                        0 0 40px rgba(255, 126, 95, 0.3);
+            /* স্মুথ এনালগ কালার ট্রানজিশন */
+            background: conic-gradient(from 0deg, #ff9a9e, #fecfef, #f6d365, #fda085, #ff9a9e);
+            animation: analogRotate 6s linear infinite;
+            /* ৫ পিক্সেল সফট এনালগ গ্লো */
+            box-shadow: 0 0 5px rgba(255, 154, 158, 0.5),
+                        0 0 10px rgba(254, 207, 239, 0.3);
         }
 
-        @keyframes rotateGlow {
+        @keyframes analogRotate {
             100% {
                 transform: rotate(360deg);
             }
         }
 
-        /* ইনার কন্টেইনার (ছবি ধারণের জন্য) */
         .img-container {
-            width: calc(100% - 10px); /* ৮-১০px বর্ডার পুরুত্ব */
-            height: calc(100% - 10px);
+            width: calc(100% - 6px); /* সুক্ষ্ম এনালগ বর্ডার */
+            height: calc(100% - 6px);
             border-radius: 50%;
             overflow: hidden;
             position: relative;
@@ -227,37 +227,14 @@
             object-fit: cover;
             border-radius: 50%;
             display: block;
-            /* রিং ঘোড়ার সময় ছবিটি যেন সোজা থাকে */
-            animation: counterRotate 3.5s linear infinite;
+            /* রিং ঘোড়ার সময় ছবিটি স্থির রাখার জন্য */
+            animation: counterRotate 6s linear infinite;
         }
 
         @keyframes counterRotate {
             100% {
                 transform: rotate(-360deg);
             }
-        }
-
-        /* অনলাইন গ্রীন ডট (Status Badge) */
-        .status-badge {
-            position: absolute;
-            bottom: 12px;
-            right: 25px;
-            width: 48px;
-            height: 48px;
-            background-color: var(--bg-primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
-
-        .status-dot {
-            width: 24px;
-            height: 24px;
-            background-color: #2ecc71;
-            border-radius: 50%;
-            box-shadow: 0 0 12px #2ecc71;
         }
 
         /* ==================== SKILLS & EXP ==================== */
@@ -383,16 +360,6 @@
                 width: 240px;
                 height: 240px;
             }
-            .status-badge {
-                width: 40px;
-                height: 40px;
-                bottom: 8px;
-                right: 12px;
-            }
-            .status-dot {
-                width: 20px;
-                height: 20px;
-            }
             .nav-right {
                 flex-direction: column;
                 gap: 0.5rem;
@@ -428,16 +395,12 @@
                 </p>
             </div>
             
-            <!-- ANIMATED PROFILE CARD -->
+            <!-- PROFILE CARD -->
             <div class="profile-card">
                 <div class="profile-img-wrapper">
                     <div class="img-container">
                         <img src="avatar2.jpg" alt="Dark Profile Picture">
                     </div>
-                </div>
-                <!-- ONLINE STATUS BADGE -->
-                <div class="status-badge">
-                    <div class="status-dot"></div>
                 </div>
             </div>
         </div>
