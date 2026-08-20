@@ -182,32 +182,51 @@
             font-size: 1.05rem;
         }
 
+        /* ==================== PROFILE IMAGE GLOW EFFECT ==================== */
         .profile-card {
             position: relative;
             display: flex;
             justify-content: center;
+            align-items: center;
         }
 
-        .img-placeholder {
+        /* 1.5px Sun Theme Gradient Border & Glow */
+        .profile-img-wrapper {
+            position: relative;
             width: 320px;
             height: 320px;
-            border-radius: 20px;
-            background: var(--bg-card);
-            border: 2px dashed var(--accent);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            box-shadow: 0 0 30px var(--accent-glow);
-            text-align: center;
-            padding: 1rem;
+            border-radius: 50%;
+            padding: 1.5px; /* Border Thickness */
+            background: linear-gradient(135deg, #ff7e5f, #feb47b, #ff2a6d);
+            background-size: 200% 200%;
+            animation: sunGlow 3s ease infinite alternate;
         }
 
-        .img-placeholder i {
-            font-size: 4rem;
-            color: var(--accent);
-            margin-bottom: 1rem;
+        .profile-img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+        }
+
+        /* Sun Gradient Glow Animation */
+        @keyframes sunGlow {
+            0% {
+                background-position: 0% 50%;
+                box-shadow: 0 0 15px rgba(255, 126, 95, 0.6),
+                            0 0 30px rgba(254, 180, 123, 0.4);
+            }
+            50% {
+                background-position: 100% 50%;
+                box-shadow: 0 0 25px rgba(255, 126, 95, 0.9),
+                            0 0 45px rgba(255, 42, 109, 0.7);
+            }
+            100% {
+                background-position: 0% 50%;
+                box-shadow: 0 0 15px rgba(255, 126, 95, 0.6),
+                            0 0 30px rgba(254, 180, 123, 0.4);
+            }
         }
 
         /* ==================== SKILLS & EXP ==================== */
@@ -329,10 +348,9 @@
             .hero-title {
                 font-size: 2.5rem;
             }
-            .img-placeholder {
+            .profile-img-wrapper {
                 width: 250px;
                 height: 250px;
-                margin: 0 auto;
             }
             .nav-right {
                 flex-direction: column;
@@ -349,9 +367,9 @@
             <a href="#" class="logo">&lt;DARK/&gt;</a>
             <div class="nav-right">
                 <div class="theme-switcher">
-                    <button class="theme-btn active" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i> Dark</button>
-                    <button class="theme-btn" onclick="setTheme('sun-gradient')"><i class="fa-solid fa-sun"></i> Sun</button>
-                    <button class="theme-btn" onclick="setTheme('light')"><i class="fa-solid fa-lightbulb"></i> Light</button>
+                    <button class="theme-btn active" onclick="setTheme('dark', event)"><i class="fa-solid fa-moon"></i> Dark</button>
+                    <button class="theme-btn" onclick="setTheme('sun-gradient', event)"><i class="fa-solid fa-sun"></i> Sun</button>
+                    <button class="theme-btn" onclick="setTheme('light', event)"><i class="fa-solid fa-lightbulb"></i> Light</button>
                 </div>
             </div>
         </nav>
@@ -369,7 +387,10 @@
                 </p>
             </div>
             <div class="profile-card">
-                <img src="avatar2.jpg" alt="Dark" style="width:320px; height:320px; border-radius:20px; object-fit:cover;">
+                <div class="profile-img-wrapper">
+                    <!-- আপনার ছবির ফাইল পাথ বা ইউআরএল দিয়ে পরিবর্তন করুন -->
+                    <img src="profile.jpg" alt="Dark Profile Picture">
+                </div>
             </div>
         </div>
     </section>
@@ -454,14 +475,16 @@
 
     <!-- JAVASCRIPT FOR THEME SWITCHER -->
     <script>
-        function setTheme(themeName) {
+        function setTheme(themeName, event) {
             document.body.setAttribute('data-theme', themeName);
             
             // Update active state of buttons
             const buttons = document.querySelectorAll('.theme-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
             
-            event.currentTarget.classList.add('active');
+            if(event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
         }
     </script>
 </body>
