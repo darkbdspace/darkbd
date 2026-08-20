@@ -13,6 +13,7 @@
     <!-- Favicon (Website Icon) -->
     <!--link rel="icon" type="image/png" href="icon.png"-->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><filter id='sunGlow' x='-50%' y='-50%' width='200%' height='200%'><feDropShadow dx='0' dy='0' stdDeviation='8' flood-color='%23ff7e5f' flood-opacity='0.9'/><feDropShadow dx='0' dy='0' stdDeviation='15' flood-color='%23ffbe76' flood-opacity='0.7'/></filter><clipPath id='circleClip'><circle cx='50' cy='50' r='38'/></clipPath></defs><circle cx='50' cy='50' r='38' fill='%23ff7e5f' filter='url(%23sunGlow)'/><image href='icon.png' x='12' y='12' width='76' height='76' clip-path='url(%23circleClip)'/></svg>">
+    <link id="dynamic-favicon" rel="icon" type="image/png" href="icon.png">
     <style>
         /* ==================== CSS VARIABLES & THEMES ==================== */
         :root {
@@ -502,6 +503,56 @@
                 event.currentTarget.classList.add('active');
             }
         }
+    </script>
+    <script>
+        (function generateSunGlowFavicon() {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = 'icon.png'; // আপনার আইকন ফাইলের নাম ও পাথ
+    
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // ক্যানভাস সাইজ
+                const size = 64; 
+                const padding = 10;
+                canvas.width = size;
+                canvas.height = size;
+    
+                const centerX = size / 2;
+                const centerY = size / 2;
+                const radius = (size - padding * 2) / 2;
+    
+                // ১. সফট সান গ্লো (Sun Glow Effect)
+                ctx.shadowColor = '#ff7e5f'; // Sun Orange Glow
+                ctx.shadowBlur = 12;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+    
+                // ২. ব্যাকগ্রাউন্ডে গ্লো শেপ তৈরি
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff7e5f';
+                ctx.fill();
+    
+                // ৩. আইকন ক্লিপিং ও ইমেজ ড্র
+                ctx.shadowBlur = 0; // মূল ছবিতে যেন ব্লাঙ্ক না আসে
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                ctx.drawImage(img, padding, padding, size - padding * 2, size - padding * 2);
+                ctx.restore();
+    
+                // ৪. ফ্যাভআইকন রিপ্লেস
+                const favicon = document.getElementById('dynamic-favicon');
+                if (favicon) {
+                    favicon.href = canvas.toDataURL('image/png');
+                }
+            };
+        })();
     </script>
 </body>
 </html>
