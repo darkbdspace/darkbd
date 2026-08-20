@@ -11,7 +11,8 @@
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Favicon (Website Icon) -->
-    <link rel="icon" type="image/png" href="icon.png">
+    <!--link rel="icon" type="image/png" href="icon.png"-->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><filter id='sunGlow' x='-50%' y='-50%' width='200%' height='200%'><feDropShadow dx='0' dy='0' stdDeviation='8' flood-color='%23ff7e5f' flood-opacity='0.9'/><feDropShadow dx='0' dy='0' stdDeviation='15' flood-color='%23ffbe76' flood-opacity='0.7'/></filter><clipPath id='circleClip'><circle cx='50' cy='50' r='38'/></clipPath></defs><circle cx='50' cy='50' r='38' fill='%23ff7e5f' filter='url(%23sunGlow)'/><image href='icon.png' x='12' y='12' width='76' height='76' clip-path='url(%23circleClip)'/></svg>">
     <style>
         /* ==================== CSS VARIABLES & THEMES ==================== */
         :root {
@@ -501,55 +502,6 @@
                 event.currentTarget.classList.add('active');
             }
         }
-    </script>
-    <!-- ফুটারের ঠিক নিচে </body> ট্যাগের উপরে এই স্ক্রিপ্টটি বসান -->
-    <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            const img = new Image();
-            img.src = 'icon.png'; // আপনার আইকন ফাইলের নাম
-            
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const padding = 20; // গ্লো ছড়ানোর বাড়তি স্পেস
-                
-                canvas.width = img.width + padding * 2;
-                canvas.height = img.height + padding * 2;
-    
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
-                const radius = img.width / 2;
-    
-                // ১. সান গ্লো কালার ইফেক্ট (Orange-Yellow Glow)
-                ctx.shadowColor = '#ff7e5f'; // Sun Orange Color
-                ctx.shadowBlur = 18;         // গ্লো ছড়ানোর পরিমাণ
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
-    
-                // ২. ব্যাগ্রাউন্ডে গ্লো লেয়ার ড্র করা
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#ff7e5f';
-                ctx.fill();
-    
-                // ৩. ছবির ওপর থেকে শ্যাডো বন্ধ করে আইকন ড্র করা
-                ctx.shadowBlur = 0;
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                ctx.closePath();
-                ctx.clip();
-                ctx.drawImage(img, padding, padding, img.width, img.height);
-                ctx.restore();
-    
-                // ৪. ফ্যাভআইকন আপডেট
-                let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-                link.type = 'image/png';
-                link.rel = 'shortcut icon';
-                link.href = canvas.toDataURL('image/png');
-                document.getElementsByTagName('head')[0].appendChild(link);
-            };
-        });
     </script>
 </body>
 </html>
