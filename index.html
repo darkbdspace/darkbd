@@ -182,7 +182,7 @@
             font-size: 1.05rem;
         }
 
-        /* ==================== PROFILE IMAGE (ANALOG 5PX SOFT GLOW) ==================== */
+        /* ==================== PROFILE IMAGE (5PX BORDER + ANALOG GLOW OUTSIDE) ==================== */
         .profile-card {
             position: relative;
             display: flex;
@@ -198,12 +198,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            /* স্মুথ এনালগ কালার ট্রানজিশন */
+            
+            /* গ্র্যাডিয়েন্ট অ্যানিমেশন */
             background: conic-gradient(from 0deg, #ff9a9e, #fecfef, #f6d365, #fda085, #ff9a9e);
             animation: analogRotate 6s linear infinite;
-            /* ৫ পিক্সেল সফট এনালগ গ্লো */
-            box-shadow: 0 0 5px rgba(255, 154, 158, 0.5),
-                        0 0 10px rgba(254, 207, 239, 0.3);
+
+            /* ছবির বাইরে ছড়িয়ে পড়া সফট এনালগ গ্লো */
+            box-shadow: 0 0 20px rgba(255, 154, 158, 0.45),
+                        0 0 35px rgba(254, 207, 239, 0.3);
         }
 
         @keyframes analogRotate {
@@ -213,8 +215,9 @@
         }
 
         .img-container {
-            width: calc(100% - 6px); /* সুক্ষ্ম এনালগ বর্ডার */
-            height: calc(100% - 6px);
+            /* বর্ডার সাইজ ৫ পিক্সেল (১০px বিয়োগ মানে দুইপাশে ৫px করে) */
+            width: calc(100% - 10px); 
+            height: calc(100% - 10px);
             border-radius: 50%;
             overflow: hidden;
             position: relative;
@@ -227,7 +230,7 @@
             object-fit: cover;
             border-radius: 50%;
             display: block;
-            /* রিং ঘোড়ার সময় ছবিটি স্থির রাখার জন্য */
+            /* রিং ঘোরার সময় ছবিটিকে সোজা রাখার জন্য */
             animation: counterRotate 6s linear infinite;
         }
 
