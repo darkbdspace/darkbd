@@ -15,23 +15,8 @@
     <link id="dynamic-favicon" rel="icon" type="image/png" href="icon.png">
     <style>
         /* ==================== CSS VARIABLES & THEMES ==================== */
+        /* Default: Sun Gradient Theme */
         :root {
-            /* Default: Dark Theme */
-            --bg-primary: #0a0c10;
-            --bg-secondary: #12161f;
-            --bg-card: #181e2a;
-            --text-primary: #f0f6fc;
-            --text-secondary: #8b949e;
-            --accent: #00f2fe;
-            --accent-glow: rgba(0, 242, 254, 0.25);
-            --border: #2d3748;
-            --font-head: 'Orbitron', sans-serif;
-            --font-body: 'Inter', sans-serif;
-            --font-code: 'Fira Code', monospace;
-        }
-
-        /* Sun Gradient Theme */
-        [data-theme="sun-gradient"] {
             --bg-primary: #1a0b2e;
             --bg-secondary: #28123d;
             --bg-card: #3b154c;
@@ -40,6 +25,21 @@
             --accent: #ff7e5f;
             --accent-glow: rgba(255, 126, 95, 0.35);
             --border: #5c226e;
+            --font-head: 'Orbitron', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-code: 'Fira Code', monospace;
+        }
+
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --bg-primary: #0a0c10;
+            --bg-secondary: #12161f;
+            --bg-card: #181e2a;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent: #00f2fe;
+            --accent-glow: rgba(0, 242, 254, 0.25);
+            --border: #2d3748;
         }
 
         /* Light Theme */
@@ -372,7 +372,7 @@
         }
     </style>
 </head>
-<body data-theme="dark">
+<body>
 
     <!-- NAVBAR -->
     <header>
@@ -380,8 +380,8 @@
             <a href="#" class="logo">DARK</a>
             <div class="nav-right">
                 <div class="theme-switcher">
-                    <button class="theme-btn active" onclick="setTheme('dark', event)"><i class="fa-solid fa-moon"></i> Dark</button>
-                    <button class="theme-btn" onclick="setTheme('sun-gradient', event)"><i class="fa-solid fa-sun"></i> Sun</button>
+                    <button class="theme-btn" onclick="setTheme('dark', event)"><i class="fa-solid fa-moon"></i> Dark</button>
+                    <button class="theme-btn active" onclick="setTheme('sun-gradient', event)"><i class="fa-solid fa-sun"></i> Sun</button>
                     <button class="theme-btn" onclick="setTheme('light', event)"><i class="fa-solid fa-lightbulb"></i> Light</button>
                 </div>
             </div>
