@@ -1,0 +1,5 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Daily Journal</title><link rel="stylesheet" href="css/english.css"></head><body>
+<header class="top"><a class="brand" href="index.html">English Lab <span>V2</span></a><nav><a href="learn.html">Learn</a><a class="active" href="journal.html">Journal</a><a href="quiz.html">Quiz</a><a href="review.html">Review</a><a href="mistakes.html">Mistakes</a><a href="progress.html">Progress</a></nav></header>
+<main class="wrap narrow"><p class="eyebrow">DAILY JOURNAL</p><h1>What did you do today?</h1><p class="muted">Write naturally. Your journal becomes part of your personalised practice.</p>
+<div class="card"><label>Date</label><input id="date" type="date"><label>What did you do?</label><textarea id="text" rows="10" placeholder="I woke up at 7 AM. I checked my messages..."></textarea><button class="btn primary" onclick="saveJournal()">Save journal & create practice</button><p id="saved" class="success"></p></div>
+<div id="entries"></div></main><script src="js/app.js"></script><script>initJournal()</script></body></html>

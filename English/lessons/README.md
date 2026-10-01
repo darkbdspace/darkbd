@@ -1,0 +1,1 @@
+Add more profession JSON files here as the library grows. The current core lesson set is embedded in js/app.js so the app works offline.
