@@ -1,358 +1,824 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Solana Token Holder Scanner</title>
-  <style>
-    :root {
-      --bg: #0b1120;
-      --card: #111827;
-      --border: #1f2937;
-      --text: #f3f4f6;
-      --muted: #9ca3af;
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-      --success: #10b981;
-      --danger: #ef4444;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      padding: 24px 16px;
-      line-height: 1.5;
-    }
-    .container { max-width: 960px; margin: 0 auto; }
-    h1 { font-size: 1.5rem; margin-bottom: 6px; }
-    .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px;
-      margin-bottom: 18px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-    @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
-    label {
-      display: block;
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-bottom: 6px;
-      font-weight: 600;
-    }
-    input {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #090d16;
-      color: var(--text);
-      font-size: 0.9rem;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    }
-    input:focus { outline: none; border-color: var(--accent); }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    button {
-      padding: 10px 16px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #1f2937;
-      color: var(--text);
-      font-weight: 600;
-      font-size: 0.88rem;
-      cursor: pointer;
-      transition: 0.15s;
-    }
-    button:hover:not(:disabled) { background: #374151; }
-    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    button.primary:hover:not(:disabled) { background: var(--accent-hover); }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .status {
-      margin-top: 12px;
-      font-size: 0.88rem;
-      color: var(--muted);
-    }
-    .status.error { color: var(--danger); }
-    .status.ok { color: var(--success); }
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-    @media (max-width: 680px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-    .stat-box {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 14px;
-    }
-    .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
-    .stat-val { font-size: 1.05rem; font-weight: 700; margin-top: 4px; word-break: break-all; }
-    .toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
-    .search-input { max-width: 340px; font-family: inherit; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    th, td {
-      text-align: left;
-      padding: 11px 10px;
-      border-bottom: 1px solid var(--border);
-    }
-    th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
-    tr:hover td { background: rgba(255, 255, 255, 0.02); }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .copy-mini {
-      padding: 4px 8px;
-      font-size: 0.75rem;
-      border-radius: 6px;
-    }
-  </style>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1VY5BLHXT2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-1VY5BLHXT2');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Token Holder Scanner | DARK</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Favicon -->
+    <link id="dynamic-favicon" rel="icon" type="image/png" href="../icon.png">
+    <style>
+        /* ==================== CSS VARIABLES & THEMES ==================== */
+        /* Default: Sun Gradient Theme */
+        :root {
+            --bg-primary: #1a0b2e;
+            --bg-secondary: #28123d;
+            --bg-card: #3b154c;
+            --text-primary: #fff5ea;
+            --text-secondary: #ffd1a9;
+            --accent: #ff7e5f;
+            --accent-glow: rgba(255, 126, 95, 0.35);
+            --border: #5c226e;
+            --success: #34d399;
+            --danger: #f87171;
+            --font-head: 'Orbitron', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-code: 'Fira Code', monospace;
+        }
+
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --bg-primary: #0a0c10;
+            --bg-secondary: #12161f;
+            --bg-card: #181e2a;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent: #00f2fe;
+            --accent-glow: rgba(0, 242, 254, 0.25);
+            --border: #2d3748;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        /* Light Theme */
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --accent: #2563eb;
+            --accent-glow: rgba(37, 99, 235, 0.15);
+            --border: #e2e8f0;
+            --success: #059669;
+            --danger: #dc2626;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* ==================== NAVBAR ==================== */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(26, 11, 46, 0.78);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            border-bottom: 1px solid var(--border);
+        }
+
+        [data-theme="dark"] header {
+            background: rgba(10, 12, 16, 0.78);
+        }
+
+        [data-theme="light"] header {
+            background: rgba(248, 250, 252, 0.85);
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 2rem;
+            gap: 1rem;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+        }
+
+        .logo {
+            font-family: var(--font-head);
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: 2px;
+        }
+
+        .back-link {
+            font-family: var(--font-code);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .theme-switcher {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--bg-secondary);
+            padding: 0.4rem;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .theme-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: var(--font-body);
+        }
+
+        .theme-btn.active {
+            background: var(--accent);
+            color: #000;
+        }
+
+        [data-theme="light"] .theme-btn.active {
+            color: #fff;
+        }
+
+        /* ==================== MAIN CONTAINER ==================== */
+        main {
+            flex: 1;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 7.5rem 2rem 3rem 2rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .badge {
+            font-family: var(--font-code);
+            color: var(--accent);
+            font-size: 0.9rem;
+            display: inline-block;
+            background: var(--bg-card);
+            padding: 0.35rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            margin-bottom: 0.8rem;
+        }
+
+        .page-title {
+            font-family: var(--font-head);
+            font-size: 2.2rem;
+            line-height: 1.2;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-title span {
+            color: var(--accent);
+            text-shadow: 0 0 18px var(--accent-glow);
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* ==================== CARDS & INPUTS ==================== */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .field {
+            margin-bottom: 1.1rem;
+        }
+
+        label {
+            display: block;
+            font-family: var(--font-code);
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.45rem;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.92rem;
+            font-family: var(--font-code);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        .custom-rpc-box {
+            display: none;
+            margin-bottom: 1.1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            border: 1px dashed var(--border);
+        }
+
+        .custom-rpc-box.open {
+            display: block;
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.45rem;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        [data-theme="light"] .btn-primary {
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            color: #000;
+            filter: brightness(1.08);
+        }
+
+        [data-theme="light"] .btn-primary:hover:not(:disabled) {
+            color: #fff;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 1rem;
+            font-family: var(--font-code);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .status.error { color: var(--danger); }
+        .status.ok { color: var(--success); }
+
+        /* ==================== STATS GRID ==================== */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .stat-box:hover {
+            border-color: var(--accent);
+        }
+
+        .stat-label {
+            font-family: var(--font-code);
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .stat-val {
+            font-family: var(--font-head);
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: var(--accent);
+            margin-top: 0.35rem;
+            word-break: break-all;
+        }
+
+        /* ==================== TABLE & TOOLBAR ==================== */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            max-width: 380px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.85rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-family: var(--font-code);
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        .mono {
+            font-family: var(--font-code);
+            font-size: 0.86rem;
+        }
+
+        .copy-mini {
+            padding: 0.35rem 0.65rem;
+            font-size: 0.78rem;
+            border-radius: 6px;
+        }
+
+        /* ==================== FOOTER ==================== */
+        footer {
+            text-align: center;
+            padding: 2.2rem 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-family: var(--font-code);
+            font-size: 0.88rem;
+            margin-top: auto;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            nav {
+                flex-direction: column;
+                padding: 1rem;
+            }
+            main {
+                padding-top: 9.5rem;
+            }
+            .page-title {
+                font-size: 1.65rem;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Solana Token Holder Scanner</h1>
-    <p class="subtitle">Auto-detects Devnet / Mainnet &bull; SPL Token &amp; Token-2022 &bull; Pure Static Client-Side</p>
 
-    <div class="card">
-      <div class="grid">
-        <div>
-          <label for="mintInput">Token Mint Address</label>
-          <input id="mintInput" value="4wMp7FQJrSwHXJ92kKRd9X2LQE1Tw7L4beT7fBLgjY4y" />
+    <!-- NAVBAR -->
+    <header>
+        <nav>
+            <div class="nav-left">
+                <a href="../index.html" class="logo">DARK</a>
+                <a href="../index.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Portfolio</a>
+            </div>
+            <div class="theme-switcher">
+                <button class="theme-btn" data-theme-target="dark" onclick="setTheme('dark', event)"><i class="fa-solid fa-moon"></i> Dark</button>
+                <button class="theme-btn active" data-theme-target="sun-gradient" onclick="setTheme('sun-gradient', event)"><i class="fa-solid fa-sun"></i> Sun</button>
+                <button class="theme-btn" data-theme-target="light" onclick="setTheme('light', event)"><i class="fa-solid fa-lightbulb"></i> Light</button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- MAIN SCANNER -->
+    <main>
+        <div class="page-header">
+            <div class="badge"><i class="fa-solid fa-radar"></i> WEB3 ON-CHAIN UTILITY</div>
+            <h1 class="page-title">Solana Token <span>Holder Scanner</span></h1>
+            <p class="page-subtitle">Auto-detects Devnet / Mainnet &bull; SPL Token &amp; Token-2022 &bull; Pure Client-Side</p>
         </div>
-        <div>
-          <label for="rpcInput">Devnet RPC URL (Helius)</label>
-          <input id="rpcInput" value="https://devnet.helius-rpc.com/?api-key=98e00548-e607-437e-8437-91ad083fa6c1" />
+
+        <div class="card">
+            <div class="field">
+                <label for="mintInput"><i class="fa-solid fa-coins" style="color:var(--accent)"></i> Token Mint Address</label>
+                <input id="mintInput" value="4wMp7FQJrSwHXJ92kKRd9X2LQE1Tw7L4beT7fBLgjY4y" placeholder="Enter SPL Token Mint Address..." />
+            </div>
+
+            <div id="customRpcBox" class="custom-rpc-box">
+                <label for="rpcInput"><i class="fa-solid fa-server" style="color:var(--accent)"></i> Custom RPC Endpoint (Optional)</label>
+                <input id="rpcInput" value="" placeholder="https://your-custom-rpc.com/?api-key=..." autocomplete="off" />
+                <p class="hint">Leave empty to use built-in default RPC. Paste your own Devnet or Mainnet RPC URL to override.</p>
+            </div>
+
+            <div class="actions">
+                <button id="scanBtn" class="btn btn-primary" onclick="scanHolders()">
+                    <i class="fa-solid fa-magnifying-glass"></i> Scan All Holders
+                </button>
+                <button id="copyAllBtn" class="btn" onclick="copyAllWallets()" disabled>
+                    <i class="fa-regular fa-copy"></i> Copy All Wallets
+                </button>
+                <button id="csvBtn" class="btn" onclick="downloadCSV()" disabled>
+                    <i class="fa-solid fa-file-csv"></i> Download CSV
+                </button>
+                <button type="button" class="btn btn-ghost" onclick="toggleCustomRpc()">
+                    <i class="fa-solid fa-sliders"></i> Custom RPC (Optional)
+                </button>
+            </div>
+            <div id="status" class="status">&gt;_ Ready. Using built-in default RPC.</div>
         </div>
-      </div>
 
-      <div class="actions">
-        <button id="scanBtn" class="primary" onclick="scanHolders()">Scan All Holders</button>
-        <button id="copyAllBtn" onclick="copyAllWallets()" disabled>Copy All Wallets</button>
-        <button id="csvBtn" onclick="downloadCSV()" disabled>Download CSV (Excel)</button>
-      </div>
-      <div id="status" class="status">Ready. Click "Scan All Holders" to fetch live on-chain data.</div>
-    </div>
+        <div id="statsSection" class="stats" style="display: none;">
+            <div class="stat-box">
+                <div class="stat-label">Network</div>
+                <div id="statNetwork" class="stat-val">-</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Active Holders</div>
+                <div id="statCount" class="stat-val">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Active Balance</div>
+                <div id="statSupply" class="stat-val">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Decimals</div>
+                <div id="statDecimals" class="stat-val">-</div>
+            </div>
+        </div>
 
-    <div id="statsSection" class="stats" style="display: none;">
-      <div class="stat-box">
-        <div class="stat-label">Network</div>
-        <div id="statNetwork" class="stat-val">-</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Active Holders</div>
-        <div id="statCount" class="stat-val">0</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Total Active Balance</div>
-        <div id="statSupply" class="stat-val">0</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Decimals</div>
-        <div id="statDecimals" class="stat-val">-</div>
-      </div>
-    </div>
+        <div id="resultsCard" class="card" style="display: none;">
+            <div class="toolbar">
+                <input
+                    id="searchInput"
+                    class="search-input"
+                    placeholder="Filter by wallet address (prefix / suffix)..."
+                    oninput="renderTable()"
+                />
+                <span id="filterCount" class="mono" style="color: var(--text-secondary);"></span>
+            </div>
 
-    <div id="resultsCard" class="card" style="display: none;">
-      <div class="toolbar">
-        <input
-          id="searchInput"
-          class="search-input"
-          placeholder="Filter by wallet address (prefix / suffix)..."
-          oninput="renderTable()"
-        />
-        <span id="filterCount" class="subtitle" style="margin: 0;"></span>
-      </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Owner Wallet Address</th>
+                            <th>Balance</th>
+                            <th>Share %</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Owner Wallet Address</th>
-              <th>Balance</th>
-              <th>Share %</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+    <!-- FOOTER -->
+    <footer>
+        <p>&copy; 2026 Dark. All Rights Reserved. Built with Cyber Space Energy.</p>
+    </footer>
 
-  <script>
-    const MAINNET_RPC = "https://api.mainnet-beta.solana.com";
-    let allHolders = [];
-    let totalHeldSupply = 0;
+    <!-- THEME & FAVICON SCRIPTS -->
+    <script>
+        function setTheme(themeName) {
+            document.body.setAttribute('data-theme', themeName);
+            localStorage.setItem('dark_portfolio_theme', themeName);
 
-    async function rpcCall(rpcUrl, method, params) {
-      const res = await fetch(rpcUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-      const data = await res.json();
-      if (data.error) throw new Error(`RPC Error: ${data.error.message}`);
-      return data.result;
-    }
-
-    async function detectNetworkAndMint(mint, devnetRpc) {
-      const devInfo = await rpcCall(devnetRpc, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
-      if (devInfo?.value) {
-        return { network: "Devnet", rpc: devnetRpc, account: devInfo.value };
-      }
-      const mainInfo = await rpcCall(MAINNET_RPC, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
-      if (mainInfo?.value) {
-        return { network: "Mainnet", rpc: MAINNET_RPC, account: mainInfo.value };
-      }
-      throw new Error("Token Mint address Devnet ba Mainnet kothao pawa jayni!");
-    }
-
-    async function scanHolders() {
-      const mint = document.getElementById("mintInput").value.trim();
-      const devnetRpc = document.getElementById("rpcInput").value.trim();
-      const status = document.getElementById("status");
-      const scanBtn = document.getElementById("scanBtn");
-
-      if (!mint || !devnetRpc) {
-        status.className = "status error";
-        status.textContent = "Mint address ebong RPC URL duitai dite hobe.";
-        return;
-      }
-
-      scanBtn.disabled = true;
-      document.getElementById("copyAllBtn").disabled = true;
-      document.getElementById("csvBtn").disabled = true;
-      status.className = "status";
-      status.textContent = "Detecting network & checking mint info...";
-
-      try {
-        const { network, rpc, account } = await detectNetworkAndMint(mint, devnetRpc);
-        const programId = account.owner;
-        const parsedMint = account.data?.parsed?.info;
-        const decimals = parsedMint?.decimals ?? "-";
-
-        status.textContent = `Detected ${network}. Fetching all holder accounts...`;
-
-        const filters = [{ memcmp: { offset: 0, bytes: mint } }];
-        if (programId === "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") {
-          filters.unshift({ dataSize: 165 });
+            const buttons = document.querySelectorAll('.theme-btn');
+            buttons.forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-theme-target') === themeName);
+            });
         }
 
-        const accounts = await rpcCall(rpc, "getProgramAccounts", [
-          programId,
-          { encoding: "jsonParsed", filters }
-        ]);
-
-        const holdersMap = new Map();
-        for (const item of accounts) {
-          const info = item.account?.data?.parsed?.info;
-          if (!info) continue;
-          const amount = Number(info.tokenAmount?.uiAmountString ?? 0);
-          if (amount <= 0) continue;
-          const owner = info.owner;
-          holdersMap.set(owner, (holdersMap.get(owner) || 0) + amount);
+        const savedTheme = localStorage.getItem('dark_portfolio_theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
         }
 
-        allHolders = [...holdersMap.entries()]
-          .map(([wallet, balance]) => ({ wallet, balance }))
-          .sort((a, b) => b.balance - a.balance);
+        (function generateSunGlowFavicon() {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = '../icon.png';
 
-        totalHeldSupply = allHolders.reduce((sum, h) => sum + h.balance, 0);
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const size = 128;
+                const padding = 22;
+                canvas.width = size;
+                canvas.height = size;
 
-        document.getElementById("statNetwork").textContent = network;
-        document.getElementById("statCount").textContent = allHolders.length.toLocaleString();
-        document.getElementById("statSupply").textContent = totalHeldSupply.toLocaleString(undefined, { maximumFractionDigits: 6 });
-        document.getElementById("statDecimals").textContent = decimals;
+                const centerX = size / 2;
+                const centerY = size / 2;
+                const radius = (size - padding * 2) / 2;
 
-        document.getElementById("statsSection").style.display = "grid";
-        document.getElementById("resultsCard").style.display = "block";
-        document.getElementById("copyAllBtn").disabled = allHolders.length === 0;
-        document.getElementById("csvBtn").disabled = allHolders.length === 0;
+                ctx.shadowColor = '#ff7e5f';
+                ctx.shadowBlur = 24;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff7e5f';
+                ctx.fill();
 
-        status.className = "status ok";
-        status.textContent = `Success! Found ${allHolders.length} active holders on ${network}.`;
-        renderTable();
-      } catch (err) {
-        status.className = "status error";
-        status.textContent = "Failed: " + err.message;
-      } finally {
-        scanBtn.disabled = false;
-      }
-    }
+                ctx.shadowColor = '#ffd200';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffd200';
+                ctx.fill();
 
-    function renderTable() {
-      const q = document.getElementById("searchInput").value.trim().toLowerCase();
-      const filtered = q
-        ? allHolders.filter((h) => h.wallet.toLowerCase().includes(q))
-        : allHolders;
+                ctx.shadowColor = '#ff4500';
+                ctx.shadowBlur = 8;
+                ctx.strokeStyle = '#ffa500';
+                ctx.lineWidth = 4;
+                ctx.stroke();
 
-      document.getElementById("filterCount").textContent =
-        `Showing ${filtered.length} of ${allHolders.length} holders`;
+                ctx.shadowBlur = 0;
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius - 1, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                ctx.drawImage(img, padding, padding, size - padding * 2, size - padding * 2);
+                ctx.restore();
 
-      const tbody = document.getElementById("tbody");
-      tbody.innerHTML = filtered
-        .map((h, idx) => {
-          const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(2) : "0.00";
-          return `
-            <tr>
-              <td>${idx + 1}</td>
-              <td class="mono">${h.wallet}</td>
-              <td>${h.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
-              <td>${share}%</td>
-              <td><button class="copy-mini" onclick="copyOne('${h.wallet}', this)">Copy</button></td>
-            </tr>
-          `;
-        })
-        .join("");
-    }
+                const favicon = document.getElementById('dynamic-favicon');
+                if (favicon) {
+                    favicon.href = canvas.toDataURL('image/png');
+                }
+            };
+        })();
+    </script>
 
-    function copyOne(wallet, btn) {
-      navigator.clipboard.writeText(wallet);
-      const old = btn.textContent;
-      btn.textContent = "Copied!";
-      setTimeout(() => (btn.textContent = old), 1200);
-    }
+    <!-- SOLANA HOLDER SCANNER LOGIC -->
+    <script>
+        const DEFAULT_DEVNET_RPC = [
+            "https://devnet.helius-rpc.com/?api-key=",
+            "98e00548-e607-437e-8437-91ad083fa6c1"
+        ].join("");
+        const MAINNET_RPC = "https://api.mainnet-beta.solana.com";
 
-    function copyAllWallets() {
-      if (!allHolders.length) return;
-      navigator.clipboard.writeText(allHolders.map((h) => h.wallet).join("\n"));
-      const status = document.getElementById("status");
-      status.className = "status ok";
-      status.textContent = `Copied ${allHolders.length} wallet addresses to clipboard!`;
-    }
+        let allHolders = [];
+        let totalHeldSupply = 0;
 
-    function downloadCSV() {
-      if (!allHolders.length) return;
-      const rows = [
-        "Rank,Wallet Address,Balance,Share (%)",
-        ...allHolders.map((h, i) => {
-          const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(4) : "0";
-          return `${i + 1},${h.wallet},${h.balance},${share}%`;
-        })
-      ];
-      const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `holders_${document.getElementById("mintInput").value.trim().slice(0, 8)}.csv`;
-      a.click();
-    }
-  </script>
+        function toggleCustomRpc() {
+            const box = document.getElementById("customRpcBox");
+            box.classList.toggle("open");
+            if (box.classList.contains("open")) {
+                document.getElementById("rpcInput").focus();
+            }
+        }
+
+        async function rpcCall(rpcUrl, method, params) {
+            const res = await fetch(rpcUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+            const data = await res.json();
+            if (data.error) throw new Error(`RPC Error: ${data.error.message}`);
+            return data.result;
+        }
+
+        async function resolveRpcAndMint(mint, customRpc) {
+            if (customRpc) {
+                const info = await rpcCall(customRpc, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
+                if (!info?.value) {
+                    throw new Error("Ei Custom RPC-te Token Mint address pawa jayni!");
+                }
+                return { network: "Custom RPC", rpc: customRpc, account: info.value };
+            }
+
+            const devInfo = await rpcCall(DEFAULT_DEVNET_RPC, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
+            if (devInfo?.value) {
+                return { network: "Devnet", rpc: DEFAULT_DEVNET_RPC, account: devInfo.value };
+            }
+
+            const mainInfo = await rpcCall(MAINNET_RPC, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
+            if (mainInfo?.value) {
+                return { network: "Mainnet", rpc: MAINNET_RPC, account: mainInfo.value };
+            }
+
+            throw new Error("Token Mint address Devnet ba Mainnet kothao pawa jayni!");
+        }
+
+        async function scanHolders() {
+            const mint = document.getElementById("mintInput").value.trim();
+            const customRpc = document.getElementById("rpcInput").value.trim();
+            const status = document.getElementById("status");
+            const scanBtn = document.getElementById("scanBtn");
+
+            if (!mint) {
+                status.className = "status error";
+                status.textContent = ">_ Error: Token Mint address dite hobe.";
+                return;
+            }
+
+            scanBtn.disabled = true;
+            document.getElementById("copyAllBtn").disabled = true;
+            document.getElementById("csvBtn").disabled = true;
+            status.className = "status";
+            status.textContent = customRpc
+                ? ">_ Connecting to your custom RPC..."
+                : ">_ Detecting network & checking mint info...";
+
+            try {
+                const { network, rpc, account } = await resolveRpcAndMint(mint, customRpc);
+                const programId = account.owner;
+                const parsedMint = account.data?.parsed?.info;
+                const decimals = parsedMint?.decimals ?? "-";
+
+                status.textContent = `>_ Connected (${network}). Fetching all holder accounts...`;
+
+                const filters = [{ memcmp: { offset: 0, bytes: mint } }];
+                if (programId === "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") {
+                    filters.unshift({ dataSize: 165 });
+                }
+
+                const accounts = await rpcCall(rpc, "getProgramAccounts", [
+                    programId,
+                    { encoding: "jsonParsed", filters }
+                ]);
+
+                const holdersMap = new Map();
+                for (const item of accounts) {
+                    const info = item.account?.data?.parsed?.info;
+                    if (!info) continue;
+                    const amount = Number(info.tokenAmount?.uiAmountString ?? 0);
+                    if (amount <= 0) continue;
+                    const owner = info.owner;
+                    holdersMap.set(owner, (holdersMap.get(owner) || 0) + amount);
+                }
+
+                allHolders = [...holdersMap.entries()]
+                    .map(([wallet, balance]) => ({ wallet, balance }))
+                    .sort((a, b) => b.balance - a.balance);
+
+                totalHeldSupply = allHolders.reduce((sum, h) => sum + h.balance, 0);
+
+                document.getElementById("statNetwork").textContent = network;
+                document.getElementById("statCount").textContent = allHolders.length.toLocaleString();
+                document.getElementById("statSupply").textContent = totalHeldSupply.toLocaleString(undefined, { maximumFractionDigits: 6 });
+                document.getElementById("statDecimals").textContent = decimals;
+
+                document.getElementById("statsSection").style.display = "grid";
+                document.getElementById("resultsCard").style.display = "block";
+                document.getElementById("copyAllBtn").disabled = allHolders.length === 0;
+                document.getElementById("csvBtn").disabled = allHolders.length === 0;
+
+                status.className = "status ok";
+                status.textContent = `>_ Success! Found ${allHolders.length} active holders (${network}).`;
+                renderTable();
+            } catch (err) {
+                status.className = "status error";
+                status.textContent = ">_ Failed: " + err.message;
+            } finally {
+                scanBtn.disabled = false;
+            }
+        }
+
+        function renderTable() {
+            const q = document.getElementById("searchInput").value.trim().toLowerCase();
+            const filtered = q
+                ? allHolders.filter((h) => h.wallet.toLowerCase().includes(q))
+                : allHolders;
+
+            document.getElementById("filterCount").textContent =
+                `Showing ${filtered.length} of ${allHolders.length} holders`;
+
+            const tbody = document.getElementById("tbody");
+            tbody.innerHTML = filtered
+                .map((h, idx) => {
+                    const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(2) : "0.00";
+                    return `
+                        <tr>
+                            <td class="mono">${idx + 1}</td>
+                            <td class="mono">${h.wallet}</td>
+                            <td class="mono">${h.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
+                            <td class="mono">${share}%</td>
+                            <td><button class="btn copy-mini" onclick="copyOne('${h.wallet}', this)"><i class="fa-regular fa-copy"></i> Copy</button></td>
+                        </tr>
+                    `;
+                })
+                .join("");
+        }
+
+        function copyOne(wallet, btn) {
+            navigator.clipboard.writeText(wallet);
+            const old = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+            setTimeout(() => (btn.innerHTML = old), 1200);
+        }
+
+        function copyAllWallets() {
+            if (!allHolders.length) return;
+            navigator.clipboard.writeText(allHolders.map((h) => h.wallet).join("\n"));
+            const status = document.getElementById("status");
+            status.className = "status ok";
+            status.textContent = `>_ Copied ${allHolders.length} wallet addresses to clipboard!`;
+        }
+
+        function downloadCSV() {
+            if (!allHolders.length) return;
+            const rows = [
+                "Rank,Wallet Address,Balance,Share (%)",
+                ...allHolders.map((h, i) => {
+                    const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(4) : "0";
+                    return `${i + 1},${h.wallet},${h.balance},${share}%`;
+                })
+            ];
+            const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `holders_${document.getElementById("mintInput").value.trim().slice(0, 8)}.csv`;
+            a.click();
+        }
+    </script>
 </body>
 </html>
