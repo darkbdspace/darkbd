@@ -22,7 +22,6 @@
     <link id="dynamic-favicon" rel="icon" type="image/png" href="../icon.png">
     <style>
         /* ==================== CSS VARIABLES & THEMES ==================== */
-        /* Default: Sun Gradient Theme */
         :root {
             --bg-primary: #1a0b2e;
             --bg-secondary: #28123d;
@@ -39,7 +38,6 @@
             --font-code: 'Fira Code', monospace;
         }
 
-        /* Dark Theme */
         [data-theme="dark"] {
             --bg-primary: #0a0c10;
             --bg-secondary: #12161f;
@@ -53,7 +51,6 @@
             --danger: #ef4444;
         }
 
-        /* Light Theme */
         [data-theme="light"] {
             --bg-primary: #f8fafc;
             --bg-secondary: #ffffff;
@@ -269,10 +266,16 @@
             display: block;
         }
 
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
         .hint {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: var(--text-secondary);
-            margin-top: 0.45rem;
+            margin-top: 0.4rem;
         }
 
         .actions {
@@ -392,7 +395,7 @@
         .toolbar-left {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.65rem;
             flex-wrap: wrap;
             flex: 1;
         }
@@ -405,7 +408,7 @@
         }
 
         .search-input {
-            max-width: 340px;
+            max-width: 320px;
         }
 
         .sort-pill {
@@ -513,13 +516,39 @@
             font-size: 0.8rem;
         }
 
-        .points-err {
+        .points-err-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .retry-inline-btn {
+            background: transparent;
+            border: 1px solid var(--danger);
             color: var(--danger);
-            font-size: 0.8rem;
+            font-family: var(--font-code);
+            font-size: 0.74rem;
+            padding: 0.18rem 0.48rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .retry-inline-btn:hover {
+            background: var(--danger);
+            color: #000;
+        }
+
+        .ext-link-icon {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+        }
+
+        .ext-link-icon:hover {
+            color: var(--accent);
         }
 
         .copy-mini {
-            padding: 0.35rem 0.65rem;
+            padding: 0.38rem 0.68rem;
             font-size: 0.78rem;
             border-radius: 6px;
         }
@@ -608,7 +637,6 @@
             margin-top: auto;
         }
 
-        /* RESPONSIVE */
         @media (max-width: 768px) {
             nav {
                 flex-direction: column;
@@ -655,9 +683,18 @@
             </div>
 
             <div id="customRpcBox" class="custom-rpc-box">
-                <label for="rpcInput"><i class="fa-solid fa-server" style="color:var(--accent)"></i> Custom RPC Endpoint (Optional)</label>
-                <input id="rpcInput" value="" placeholder="https://your-custom-rpc.com/?api-key=..." autocomplete="off" />
-                <p class="hint">Leave empty to use built-in default RPC. Paste your own Devnet or Mainnet RPC URL to override.</p>
+                <div class="settings-grid">
+                    <div>
+                        <label for="rpcInput"><i class="fa-solid fa-server" style="color:var(--accent)"></i> Custom Solana RPC (Optional)</label>
+                        <input id="rpcInput" value="" placeholder="https://your-custom-rpc.com/?api-key=..." autocomplete="off" />
+                        <p class="hint">Leave empty to use built-in default RPC.</p>
+                    </div>
+                    <div>
+                        <label for="proxyInput"><i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> Custom CORS Proxy / Worker (Optional)</label>
+                        <input id="proxyInput" value="" placeholder="https://your-worker.workers.dev/?url=" autocomplete="off" />
+                        <p class="hint">Optional Cloudflare Worker URL for zero-limit Testnet Points fetching.</p>
+                    </div>
+                </div>
             </div>
 
             <div class="actions">
@@ -671,7 +708,7 @@
                     <i class="fa-solid fa-file-csv"></i> Download CSV
                 </button>
                 <button type="button" class="btn btn-ghost" onclick="toggleCustomRpc()">
-                    <i class="fa-solid fa-sliders"></i> Custom RPC (Optional)
+                    <i class="fa-solid fa-sliders"></i> RPC &amp; Proxy Settings
                 </button>
             </div>
             <div id="status" class="status">&gt;_ Ready. Using built-in default RPC.</div>
@@ -705,8 +742,8 @@
                         placeholder="Filter by wallet address (prefix / suffix)..."
                         oninput="onSearchChange()"
                     />
-                    <button id="retryPointsBtn" class="btn copy-mini" onclick="retryFailedPoints()" style="display: none;">
-                        <i class="fa-solid fa-rotate-right"></i> Retry Failed Points
+                    <button id="retryPageBtn" class="btn copy-mini" onclick="retryCurrentPagePoints()" style="display: none;">
+                        <i class="fa-solid fa-rotate-right"></i> Retry Page Points
                     </button>
                 </div>
                 <div class="toolbar-right">
@@ -826,7 +863,7 @@
         })();
     </script>
 
-    <!-- SOLANA HOLDER SCANNER + HELM TESTNET POINTS + SORTING + PAGINATION -->
+    <!-- SOLANA HOLDER SCANNER + PAGE-SCOPED HELM TESTNET POINTS + SORTING + PAGINATION -->
     <script>
         const DEFAULT_DEVNET_RPC = [
             "https://devnet.helius-rpc.com/?api-key=",
@@ -838,14 +875,20 @@
         let allHolders = [];
         let totalHeldSupply = 0;
         let currentScanId = 0;
+        let currentPageBatchId = 0;
+        let currentVisibleSlice = [];
 
         // Global sort & pagination state (operates on FULL dataset)
-        let sortField = "balance"; // 'balance' | 'share' | 'points' | 'wallet'
-        let sortOrder = "desc";    // 'desc' (Max -> Min) | 'asc' (Min -> Max)
+        let sortField = "balance";
+        let sortOrder = "desc";
         let currentPage = 1;
 
         // Cache: wallet -> { status: 'loading' | 'ok' | 'error', display: string, numeric: number }
         const pointsCache = new Map();
+
+        function sleep(ms) {
+            return new Promise((r) => setTimeout(r, ms));
+        }
 
         function toggleCustomRpc() {
             const box = document.getElementById("customRpcBox");
@@ -909,23 +952,33 @@
             if (match && match[1]) {
                 return match[1].trim();
             }
-            return "0";
+            return null;
         }
 
-        // Fetch Helm Trading profile HTML with CORS fallbacks
+        // Fetch Helm Trading profile HTML via Custom Worker or CORS proxies
         async function fetchWalletTestnetPoints(wallet) {
             const profileUrl = `https://helm.trading/profile/${wallet}`;
-            const endpoints = [
-                profileUrl,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(profileUrl)}`,
-                `https://corsproxy.io/?${encodeURIComponent(profileUrl)}`
-            ];
+            const customProxy = document.getElementById("proxyInput").value.trim();
 
-            for (const url of endpoints) {
+            const sources = [];
+            if (customProxy) {
+                const fullCustom = customProxy.includes("?")
+                    ? `${customProxy}${encodeURIComponent(profileUrl)}`
+                    : `${customProxy.replace(/\/$/, "")}/?url=${encodeURIComponent(profileUrl)}`;
+                sources.push({ url: fullCustom, type: "text" });
+            }
+
+            sources.push(
+                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`, type: "allorigins-json" },
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, type: "text" },
+                { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(profileUrl)}`, type: "text" }
+            );
+
+            for (const src of sources) {
                 try {
                     const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 12000);
-                    const res = await fetch(url, { signal: controller.signal });
+                    const timer = setTimeout(() => controller.abort(), 14000);
+                    const res = await fetch(src.url, { signal: controller.signal });
                     clearTimeout(timer);
 
                     if (res.status === 404) {
@@ -933,14 +986,31 @@
                     }
                     if (!res.ok) continue;
 
-                    const html = await res.text();
+                    let html = "";
+                    if (src.type === "allorigins-json") {
+                        const json = await res.json();
+                        if (json?.status?.http_code === 404) {
+                            return { status: "ok", display: "0", numeric: 0 };
+                        }
+                        html = json?.contents || "";
+                    } else {
+                        html = await res.text();
+                    }
+
                     if (!html || html.length < 200) continue;
 
-                    const display = extractTestnetPoints(html);
-                    const numeric = Number(display.replace(/,/g, "")) || 0;
-                    return { status: "ok", display, numeric };
+                    const extracted = extractTestnetPoints(html);
+                    if (extracted !== null) {
+                        const numeric = Number(extracted.replace(/,/g, "")) || 0;
+                        return { status: "ok", display: extracted, numeric };
+                    }
+
+                    // Valid Helm profile page loaded, but user has 0 points
+                    if (html.includes("_next") && (html.includes("Helm") || html.includes("Star Trader") || html.includes("No bio"))) {
+                        return { status: "ok", display: "0", numeric: 0 };
+                    }
                 } catch (_) {
-                    // Try next fallback endpoint
+                    // Try next fallback source
                 }
             }
 
@@ -955,7 +1025,16 @@
                 return `<span class="points-muted"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</span>`;
             }
             if (entry.status === "error") {
-                return `<a href="${profileUrl}" target="_blank" rel="noopener" class="points-err" title="Open Helm Profile">Retry / View</a>`;
+                return `
+                    <span class="points-err-wrap">
+                        <button class="retry-inline-btn" onclick="retrySingleWallet('${wallet}')" title="Retry fetching points">
+                            <i class="fa-solid fa-rotate-right"></i> Retry
+                        </button>
+                        <a href="${profileUrl}" target="_blank" rel="noopener" class="ext-link-icon" title="Open Helm Profile">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </span>
+                `;
             }
             return `<a href="${profileUrl}" target="_blank" rel="noopener" class="points-link" title="View on Helm Trading">${entry.display}</a>`;
         }
@@ -967,11 +1046,28 @@
             }
         }
 
-        // Background worker queue to fetch Testnet Points smoothly (4 concurrent)
-        async function loadAllTestnetPoints(wallets, scanId, forceRetry = false) {
+        async function retrySingleWallet(wallet) {
+            pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
+            updateSinglePointsCell(wallet);
+            const result = await fetchWalletTestnetPoints(wallet);
+            pointsCache.set(wallet, result);
+            updateSinglePointsCell(wallet);
+            updatePageRetryButton();
+        }
+
+        function updatePageRetryButton() {
+            const retryBtn = document.getElementById("retryPageBtn");
+            const hasFailedOnPage = currentVisibleSlice.some((h) => pointsCache.get(h.wallet)?.status === "error");
+            retryBtn.style.display = hasFailedOnPage ? "inline-flex" : "none";
+        }
+
+        // Fetch Testnet Points ONLY for the currently visible page (100 rows max)
+        async function loadPageTestnetPoints(wallets, scanId, forceRetry = false) {
+            if (!wallets.length) return;
+
+            const batchId = ++currentPageBatchId;
             const status = document.getElementById("status");
-            const retryBtn = document.getElementById("retryPointsBtn");
-            retryBtn.style.display = "none";
+            const customProxy = document.getElementById("proxyInput").value.trim();
 
             const queue = wallets.filter((w) => {
                 const cached = pointsCache.get(w);
@@ -980,6 +1076,11 @@
                 return false;
             });
 
+            if (queue.length === 0) {
+                updatePageRetryButton();
+                return;
+            }
+
             for (const w of queue) {
                 pointsCache.set(w, { status: "loading", display: "...", numeric: -1 });
                 updateSinglePointsCell(w);
@@ -987,46 +1088,51 @@
 
             let completed = wallets.length - queue.length;
             let index = 0;
-            const concurrency = 4;
+            // Faster concurrency if using custom Cloudflare Worker; gentle pacing on free proxies
+            const concurrency = customProxy ? 8 : 3;
+            const delayMs = customProxy ? 20 : 220;
 
             async function worker() {
                 while (index < queue.length) {
-                    if (scanId !== currentScanId) return;
+                    if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
                     const wallet = queue[index++];
                     const result = await fetchWalletTestnetPoints(wallet);
-                    if (scanId !== currentScanId) return;
+                    if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
 
                     pointsCache.set(wallet, result);
                     updateSinglePointsCell(wallet);
                     completed++;
 
                     status.className = "status ok";
-                    status.textContent = `>_ Found ${wallets.length} holders. Fetching Testnet Points (${completed}/${wallets.length})...`;
+                    status.textContent = `>_ Page ${currentPage}: Loaded Testnet Points (${completed}/${wallets.length})...`;
+
+                    if (delayMs > 0) await sleep(delayMs);
                 }
             }
 
             await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, () => worker()));
 
-            if (scanId !== currentScanId) return;
+            if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
 
-            const failedCount = wallets.filter((w) => pointsCache.get(w)?.status === "error").length;
-            if (failedCount > 0) {
-                retryBtn.style.display = "inline-flex";
+            updatePageRetryButton();
+            const failedOnPage = wallets.filter((w) => pointsCache.get(w)?.status === "error").length;
+
+            if (failedOnPage > 0) {
                 status.className = "status ok";
-                status.textContent = `>_ Done! Loaded Testnet Points (${wallets.length - failedCount}/${wallets.length} succeeded, ${failedCount} failed).`;
+                status.textContent = `>_ Page ${currentPage}: Loaded ${wallets.length - failedOnPage}/${wallets.length} points (${failedOnPage} rate-limited — click Retry Page Points).`;
             } else {
                 status.className = "status ok";
-                status.textContent = `>_ Success! Loaded ${wallets.length} active holders & Helm Testnet Points.`;
+                status.textContent = `>_ Page ${currentPage}: All ${wallets.length} Helm Testnet Points loaded!`;
             }
 
             if (sortField === "points") {
-                renderTable();
+                renderTable(false);
             }
         }
 
-        function retryFailedPoints() {
-            if (!allHolders.length) return;
-            loadAllTestnetPoints(allHolders.map((h) => h.wallet), currentScanId, true);
+        function retryCurrentPagePoints() {
+            if (!currentVisibleSlice.length) return;
+            loadPageTestnetPoints(currentVisibleSlice.map((h) => h.wallet), currentScanId, true);
         }
 
         async function scanHolders() {
@@ -1045,7 +1151,7 @@
             scanBtn.disabled = true;
             document.getElementById("copyAllBtn").disabled = true;
             document.getElementById("csvBtn").disabled = true;
-            document.getElementById("retryPointsBtn").style.display = "none";
+            document.getElementById("retryPageBtn").style.display = "none";
             status.className = "status";
             status.textContent = customRpc
                 ? ">_ Connecting to your custom RPC..."
@@ -1085,7 +1191,6 @@
 
                 totalHeldSupply = allHolders.reduce((sum, h) => sum + h.balance, 0);
 
-                // Reset to default sort & page 1 on new scan
                 sortField = "balance";
                 sortOrder = "desc";
                 currentPage = 1;
@@ -1101,16 +1206,9 @@
                 document.getElementById("copyAllBtn").disabled = allHolders.length === 0;
                 document.getElementById("csvBtn").disabled = allHolders.length === 0;
 
-                renderTable();
-
-                if (allHolders.length > 0) {
-                    status.className = "status ok";
-                    status.textContent = `>_ Found ${allHolders.length} active holders (${network}). Fetching Helm Testnet Points...`;
-                    loadAllTestnetPoints(allHolders.map((h) => h.wallet), scanId, false);
-                } else {
-                    status.className = "status ok";
-                    status.textContent = `>_ Success! Found 0 active holders (${network}).`;
-                }
+                status.className = "status ok";
+                status.textContent = `>_ Success! Found ${allHolders.length.toLocaleString()} active holders (${network}).`;
+                renderTable(true);
             } catch (err) {
                 status.className = "status error";
                 status.textContent = ">_ Failed: " + err.message;
@@ -1119,17 +1217,16 @@
             }
         }
 
-        // Toggle Max -> Min / Min -> Max when clicking a column header
         function toggleSort(field) {
             if (sortField === field) {
                 sortOrder = sortOrder === "desc" ? "asc" : "desc";
             } else {
                 sortField = field;
-                sortOrder = "desc"; // First click starts with Max -> Min
+                sortOrder = "desc";
             }
             currentPage = 1;
             updateSortUI();
-            renderTable();
+            renderTable(true);
         }
 
         function updateSortUI() {
@@ -1162,7 +1259,6 @@
             }
         }
 
-        // Sorts the ENTIRE dataset across all pages
         function getSortedHolders() {
             const list = [...allHolders];
             const mult = sortOrder === "desc" ? -1 : 1;
@@ -1177,7 +1273,6 @@
                     const validA = entryA && entryA.status === "ok";
                     const validB = entryB && entryB.status === "ok";
 
-                    // Keep loading/failed entries at the bottom in both Max->Min and Min->Max
                     if (validA && !validB) return -1;
                     if (!validA && validB) return 1;
                     if (!validA && !validB) return 0;
@@ -1195,12 +1290,12 @@
 
         function onSearchChange() {
             currentPage = 1;
-            renderTable();
+            renderTable(true);
         }
 
         function goToPage(page) {
             currentPage = page;
-            renderTable();
+            renderTable(true);
             document.getElementById("resultsCard").scrollIntoView({ behavior: "smooth", block: "start" });
         }
 
@@ -1262,7 +1357,7 @@
             controls.innerHTML = html;
         }
 
-        function renderTable() {
+        function renderTable(triggerFetch = true) {
             const q = document.getElementById("searchInput").value.trim().toLowerCase();
             const sorted = getSortedHolders();
             const filtered = q
@@ -1276,14 +1371,14 @@
 
             const startIdx = (currentPage - 1) * PAGE_SIZE;
             const endIdx = Math.min(startIdx + PAGE_SIZE, totalItems);
-            const pageSlice = filtered.slice(startIdx, endIdx);
+            currentVisibleSlice = filtered.slice(startIdx, endIdx);
 
             document.getElementById("filterCount").textContent = totalItems > 0
                 ? `Showing ${startIdx + 1}–${endIdx} of ${totalItems} holders`
                 : `Showing 0 of ${allHolders.length} holders`;
 
             const tbody = document.getElementById("tbody");
-            tbody.innerHTML = pageSlice
+            tbody.innerHTML = currentVisibleSlice
                 .map((h, idx) => {
                     const globalRank = startIdx + idx + 1;
                     const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(2) : "0.00";
@@ -1301,6 +1396,11 @@
                 .join("");
 
             renderPagination(totalItems, totalPages);
+            updatePageRetryButton();
+
+            if (triggerFetch && currentVisibleSlice.length > 0) {
+                loadPageTestnetPoints(currentVisibleSlice.map((h) => h.wallet), currentScanId, false);
+            }
         }
 
         function copyOne(wallet, btn) {
@@ -1324,7 +1424,7 @@
                 "Rank,Wallet Address,Balance,Share (%),Testnet Points",
                 ...getSortedHolders().map((h, i) => {
                     const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(4) : "0";
-                    const pts = pointsCache.get(h.wallet)?.display ?? "0";
+                    const pts = pointsCache.get(h.wallet)?.display ?? "Not Loaded";
                     return `${i + 1},${h.wallet},${h.balance},${share}%,"${pts}"`;
                 })
             ];
