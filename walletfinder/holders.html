@@ -408,7 +408,7 @@
         }
 
         .search-input {
-            max-width: 320px;
+            max-width: 300px;
         }
 
         .sort-pill {
@@ -697,12 +697,12 @@
                     <div>
                         <label for="proxyInput"><i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> Local / Worker Proxy URL (Optional)</label>
                         <input id="proxyInput" value="http://localhost:8787/?url=" placeholder="http://localhost:8787/?url=" autocomplete="off" />
-                        <p class="hint">Auto-detected if running. Otherwise uses auto-cooldown reader.</p>
+                        <p class="hint">Auto-detected if running locally.</p>
                     </div>
                     <div>
-                        <label for="jinaKeyInput"><i class="fa-solid fa-key" style="color:var(--accent)"></i> Free Jina API Key (Optional - 200 RPM)</label>
+                        <label for="jinaKeyInput"><i class="fa-solid fa-key" style="color:var(--accent)"></i> Jina AI API Key (Saved Automatically)</label>
                         <input id="jinaKeyInput" value="" placeholder="jina_..." autocomplete="off" oninput="saveSettings()" />
-                        <p class="hint">Without key: auto-waits 20s every 15 requests until all 100 finish.</p>
+                        <p class="hint">Concurrency capped at 2 + auto-cooldown until all 100/100 finish.</p>
                     </div>
                 </div>
             </div>
@@ -752,8 +752,14 @@
                         placeholder="Filter by wallet address (prefix / suffix)..."
                         oninput="onSearchChange()"
                     />
+                    <button id="pauseResumeBtn" class="btn copy-mini" onclick="togglePauseFetch()" style="display: none;">
+                        <i class="fa-solid fa-pause"></i> Pause Fetch
+                    </button>
                     <button id="retryPageBtn" class="btn copy-mini" onclick="retryCurrentPagePoints()" style="display: none;">
-                        <i class="fa-solid fa-rotate-right"></i> Retry Failed Points
+                        <i class="fa-solid fa-rotate-right"></i> Retry Remaining
+                    </button>
+                    <button id="clearCacheBtn" class="btn copy-mini btn-ghost" onclick="clearPointsCache()" title="Clear saved points cache">
+                        <i class="fa-solid fa-trash-can"></i> Clear Cache
                     </button>
                 </div>
                 <div class="toolbar-right">
@@ -873,7 +879,7 @@
         })();
     </script>
 
-    <!-- SOLANA HOLDER SCANNER + AUTO-COOLDOWN HELM TESTNET POINTS -->
+    <!-- SOLANA HOLDER SCANNER + PERSISTENT CACHE + AUTO-COOLDOWN HELM TESTNET POINTS -->
     <script>
         const DEFAULT_DEVNET_RPC = [
             "https://devnet.helius-rpc.com/?api-key=",
@@ -881,19 +887,60 @@
         ].join("");
         const MAINNET_RPC = "https://api.mainnet-beta.solana.com";
         const PAGE_SIZE = 100;
+        const CACHE_STORAGE_KEY = "helm_points_cache_v1";
 
         let allHolders = [];
         let totalHeldSupply = 0;
         let currentScanId = 0;
         let currentPageBatchId = 0;
         let currentVisibleSlice = [];
+        let isFetchPaused = false;
 
         let sortField = "balance";
         let sortOrder = "desc";
         let currentPage = 1;
 
-        // Cache: wallet -> { status: 'queued' | 'loading' | 'ok' | 'ratelimit' | 'error', display: string, numeric: number }
+        // Memory + localStorage Cache: wallet -> { status: 'queued' | 'loading' | 'ok' | 'ratelimit' | 'error', display: string, numeric: number }
         const pointsCache = new Map();
+
+        // Hydrate persisted points from localStorage
+        (function loadPersistedCache() {
+            try {
+                const raw = localStorage.getItem(CACHE_STORAGE_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                for (const [wallet, val] of Object.entries(parsed)) {
+                    if (val && val.status === "ok") {
+                        pointsCache.set(wallet, val);
+                    }
+                }
+            } catch (_) {}
+        })();
+
+        let persistTimer = null;
+        function schedulePersistCache() {
+            if (persistTimer) return;
+            persistTimer = setTimeout(() => {
+                persistTimer = null;
+                try {
+                    const obj = {};
+                    for (const [wallet, val] of pointsCache.entries()) {
+                        if (val && val.status === "ok") {
+                            obj[wallet] = val;
+                        }
+                    }
+                    localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(obj));
+                } catch (_) {}
+            }, 800);
+        }
+
+        function clearPointsCache() {
+            pointsCache.clear();
+            localStorage.removeItem(CACHE_STORAGE_KEY);
+            if (currentVisibleSlice.length > 0) {
+                renderTable(true);
+            }
+        }
 
         // Load saved Jina API key if present
         const savedJinaKey = localStorage.getItem("dark_jina_api_key");
@@ -952,7 +999,6 @@
             throw new Error("Token Mint address Devnet ba Mainnet kothao pawa jayni!");
         }
 
-        // Parse "Testnet Points" from HTML or Markdown text
         function extractTestnetPoints(raw) {
             if (!raw) return null;
 
@@ -990,7 +1036,6 @@
             return null;
         }
 
-        // Check once per page batch if local proxy (localhost:8787) is running
         async function detectActiveBridge() {
             if (typeof window.__HELM_GM_FETCH__ === "function") {
                 return "tampermonkey";
@@ -1013,7 +1058,34 @@
             return "jina";
         }
 
-        // Fetch single wallet points using active bridge
+        // Secondary IP fallback when Jina/Helm temporarily rate-limits
+        async function fetchViaFallbackProxy(profileUrl) {
+            const fallbacks = [
+                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`, json: true },
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, json: false }
+            ];
+            for (const fb of fallbacks) {
+                try {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 9000);
+                    const res = await fetch(fb.url, { signal: controller.signal });
+                    clearTimeout(timer);
+                    if (!res.ok) continue;
+                    const html = fb.json ? (await res.json())?.contents : await res.text();
+                    if (!html) continue;
+                    const pts = extractTestnetPoints(html);
+                    if (pts !== null) {
+                        return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
+                    }
+                    if (html.includes("_next") && (html.includes("Helm") || html.includes("Star Trader"))) {
+                        return { status: "ok", display: "0", numeric: 0 };
+                    }
+                } catch (_) {}
+            }
+            return null;
+        }
+
+        // Fetch single wallet points; any temporary block returns 'ratelimit' so auto-cooldown retries it!
         async function fetchWalletTestnetPoints(wallet, bridgeMode) {
             const profileUrl = `https://helm.trading/profile/${wallet}`;
 
@@ -1022,7 +1094,6 @@
                 try {
                     const res = await window.__HELM_GM_FETCH__(profileUrl);
                     if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
-                    if (res.status === 429) return { status: "ratelimit", display: "429", numeric: -1 };
                     if (res.status === 200 && res.text) {
                         const pts = extractTestnetPoints(res.text);
                         if (pts !== null) {
@@ -1032,9 +1103,9 @@
                             return { status: "ok", display: "0", numeric: 0 };
                         }
                     }
-                    return { status: "error", display: "Failed", numeric: -1 };
+                    return { status: "ratelimit", display: String(res.status), numeric: -1 };
                 } catch (_) {
-                    return { status: "error", display: "Failed", numeric: -1 };
+                    return { status: "ratelimit", display: "Retry", numeric: -1 };
                 }
             }
 
@@ -1052,7 +1123,6 @@
                     clearTimeout(timer);
 
                     if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
-                    if (res.status === 429) return { status: "ratelimit", display: "429", numeric: -1 };
                     if (res.ok) {
                         const html = await res.text();
                         const pts = extractTestnetPoints(html);
@@ -1063,22 +1133,26 @@
                             return { status: "ok", display: "0", numeric: 0 };
                         }
                     }
-                    return { status: "error", display: "Failed", numeric: -1 };
+                    return { status: "ratelimit", display: String(res.status), numeric: -1 };
                 } catch (_) {
-                    return { status: "error", display: "Failed", numeric: -1 };
+                    return { status: "ratelimit", display: "Retry", numeric: -1 };
                 }
             }
 
-            // Mode 3: Jina Reader (with optional free API key)
+            // Mode 3: Jina Reader (respects strict concurrency=2 on free key)
             try {
                 const jinaKey = document.getElementById("jinaKeyInput").value.trim();
-                const headers = { "Accept": "text/plain" };
+                const headers = {
+                    "Accept": "text/plain",
+                    "X-Return-Format": "markdown",
+                    "X-With-Generated-Alt": "false"
+                };
                 if (jinaKey) {
                     headers["Authorization"] = `Bearer ${jinaKey}`;
                 }
 
                 const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 15000);
+                const timer = setTimeout(() => controller.abort(), 16000);
                 const res = await fetch(`https://r.jina.ai/${profileUrl}`, {
                     headers,
                     signal: controller.signal
@@ -1086,10 +1160,15 @@
                 clearTimeout(timer);
 
                 if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
-                if (res.status === 429) return { status: "ratelimit", display: "429", numeric: -1 };
 
                 if (res.ok) {
                     const text = await res.text();
+                    // Check if Cloudflare challenge page was returned instead of profile
+                    if (text.includes("Just a moment...") || text.includes("Attention Required! | Cloudflare")) {
+                        const fb = await fetchViaFallbackProxy(profileUrl);
+                        return fb || { status: "ratelimit", display: "CF", numeric: -1 };
+                    }
+
                     const pts = extractTestnetPoints(text);
                     if (pts !== null) {
                         return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
@@ -1098,9 +1177,14 @@
                         return { status: "ok", display: "0", numeric: 0 };
                     }
                 }
-                return { status: "error", display: "Failed", numeric: -1 };
+
+                // On 429 / 403 / 422 / 5xx, try rotating to secondary proxy before triggering cooldown
+                const fb = await fetchViaFallbackProxy(profileUrl);
+                if (fb) return fb;
+
+                return { status: "ratelimit", display: String(res.status), numeric: -1 };
             } catch (_) {
-                return { status: "error", display: "Failed", numeric: -1 };
+                return { status: "ratelimit", display: "Timeout", numeric: -1 };
             }
         }
 
@@ -1144,23 +1228,51 @@
             pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
             updateSinglePointsCell(wallet);
             const result = await fetchWalletTestnetPoints(wallet, bridgeMode);
-            if (result.status === "ratelimit") {
-                result.status = "error";
+            if (result.status === "ok") {
+                pointsCache.set(wallet, result);
+                schedulePersistCache();
+            } else {
+                pointsCache.set(wallet, { status: "error", display: "Failed", numeric: -1 });
             }
-            pointsCache.set(wallet, result);
             updateSinglePointsCell(wallet);
-            updatePageRetryButton();
+            updatePageControlButtons();
         }
 
-        function updatePageRetryButton() {
+        function togglePauseFetch() {
+            isFetchPaused = !isFetchPaused;
+            const btn = document.getElementById("pauseResumeBtn");
+            if (isFetchPaused) {
+                currentPageBatchId++; // Cancel active worker loop
+                btn.innerHTML = '<i class="fa-solid fa-play"></i> Resume Fetch';
+                for (const h of currentVisibleSlice) {
+                    const st = pointsCache.get(h.wallet)?.status;
+                    if (st === "queued" || st === "loading" || st === "ratelimit") {
+                        pointsCache.set(h.wallet, { status: "error", display: "Paused", numeric: -1 });
+                        updateSinglePointsCell(h.wallet);
+                    }
+                }
+                document.getElementById("status").textContent = `>_ Page ${currentPage}: Fetch paused. Click "Resume Fetch" to continue.`;
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause Fetch';
+                loadPageTestnetPoints(currentVisibleSlice.map((h) => h.wallet), currentScanId, true);
+            }
+            updatePageControlButtons();
+        }
+
+        function updatePageControlButtons() {
             const retryBtn = document.getElementById("retryPageBtn");
             const hasFailedOnPage = currentVisibleSlice.some((h) => pointsCache.get(h.wallet)?.status === "error");
             retryBtn.style.display = hasFailedOnPage ? "inline-flex" : "none";
         }
 
-        // Auto-cooldown & auto-retry queue so ALL 100 on the page finish without stopping at 15!
+        // Auto-cooldown & auto-retry loop until ALL 100/100 on the page finish
         async function loadPageTestnetPoints(wallets, scanId, forceRetry = false) {
             if (!wallets.length) return;
+
+            isFetchPaused = false;
+            const pauseBtn = document.getElementById("pauseResumeBtn");
+            pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause Fetch';
+            pauseBtn.style.display = "inline-flex";
 
             const batchId = ++currentPageBatchId;
             const status = document.getElementById("status");
@@ -1170,12 +1282,16 @@
             const pending = wallets.filter((w) => {
                 const cached = pointsCache.get(w);
                 if (!cached) return true;
-                if (forceRetry && cached.status === "error") return true;
+                if (forceRetry && (cached.status === "error" || cached.status === "ratelimit")) return true;
                 return false;
             });
 
             if (pending.length === 0) {
-                updatePageRetryButton();
+                pauseBtn.style.display = "none";
+                updatePageControlButtons();
+                const okCount = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
+                status.className = "status ok";
+                status.textContent = `>_ Page ${currentPage}: All ${okCount}/${wallets.length} Helm Testnet Points loaded!`;
                 return;
             }
 
@@ -1184,15 +1300,15 @@
                 updateSinglePointsCell(w);
             }
 
-            const isFast = bridgeMode === "tampermonkey" || bridgeMode === "proxy" || hasJinaKey;
-            const concurrency = isFast ? 4 : 2;
-            const delayMs = isFast ? 150 : 650;
+            // Strictly respect Jina free key concurrency = 2!
+            const concurrency = (bridgeMode === "tampermonkey" || bridgeMode === "proxy") ? 5 : 2;
+            const delayMs = (bridgeMode === "tampermonkey" || bridgeMode === "proxy") ? 120 : (hasJinaKey ? 350 : 750);
 
             let pass = 0;
-            const maxPasses = 8; // Enough automatic cooldown cycles to finish 100/100 even at 15/min
+            const maxPasses = 12;
 
             while (pass < maxPasses) {
-                if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
+                if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
 
                 const roundQueue = wallets.filter((w) => {
                     const st = pointsCache.get(w)?.status;
@@ -1202,33 +1318,39 @@
                 if (roundQueue.length === 0) break;
 
                 let idx = 0;
-                let hitRateLimit = false;
+                let consecutiveBlocks = 0;
+                let shouldCooldown = false;
 
                 async function worker() {
                     while (idx < roundQueue.length) {
-                        if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
-                        if (hitRateLimit && !isFast) return; // Pause immediately when 429 hits
+                        if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
+                        if (shouldCooldown) return;
 
                         const wallet = roundQueue[idx++];
                         pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
                         updateSinglePointsCell(wallet);
 
                         const result = await fetchWalletTestnetPoints(wallet, bridgeMode);
-                        if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
+                        if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
 
-                        if (result.status === "ratelimit") {
-                            hitRateLimit = true;
-                            pointsCache.set(wallet, { status: "ratelimit", display: "429", numeric: -1 });
+                        if (result.status === "ok") {
+                            consecutiveBlocks = 0;
+                            pointsCache.set(wallet, result);
                             updateSinglePointsCell(wallet);
-                            return;
+                            schedulePersistCache();
+
+                            const doneCount = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
+                            status.className = "status ok";
+                            status.textContent = `>_ Page ${currentPage}: Loaded ${doneCount}/${wallets.length} Helm Testnet Points...`;
+                        } else {
+                            pointsCache.set(wallet, { status: "ratelimit", display: "Cooldown", numeric: -1 });
+                            updateSinglePointsCell(wallet);
+                            consecutiveBlocks++;
+                            if (consecutiveBlocks >= 2) {
+                                shouldCooldown = true;
+                                return;
+                            }
                         }
-
-                        pointsCache.set(wallet, result);
-                        updateSinglePointsCell(wallet);
-
-                        const doneCount = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
-                        status.className = "status ok";
-                        status.textContent = `>_ Page ${currentPage}: Loaded ${doneCount}/${wallets.length} Testnet Points...`;
 
                         if (delayMs > 0) await sleep(delayMs);
                     }
@@ -1236,12 +1358,11 @@
 
                 await Promise.all(Array.from({ length: Math.min(concurrency, roundQueue.length) }, () => worker()));
 
-                if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
+                if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
 
-                // Mark any unvisited items in roundQueue as ratelimit so they get picked up next pass
                 for (const w of roundQueue) {
                     if (pointsCache.get(w)?.status === "queued") {
-                        pointsCache.set(w, { status: "ratelimit", display: "429", numeric: -1 });
+                        pointsCache.set(w, { status: "ratelimit", display: "Cooldown", numeric: -1 });
                         updateSinglePointsCell(w);
                     }
                 }
@@ -1251,7 +1372,6 @@
 
                 pass++;
                 if (pass >= maxPasses) {
-                    // Convert remaining to error so user can manually retry if needed
                     for (const w of wallets) {
                         if (pointsCache.get(w)?.status === "ratelimit") {
                             pointsCache.set(w, { status: "error", display: "Failed", numeric: -1 });
@@ -1261,25 +1381,27 @@
                     break;
                 }
 
-                // Live countdown cooldown (22 seconds) before auto-resuming
+                // Short 15-second cooldown before automatically continuing next batch
                 const doneNow = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
-                for (let sec = 22; sec > 0; sec--) {
-                    if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
+                for (let sec = 15; sec > 0; sec--) {
+                    if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
                     status.className = "status";
-                    status.textContent = `>_ Page ${currentPage}: ${doneNow}/${wallets.length} loaded. Rate-limit cooldown: auto-resuming remaining ${remaining} in ${sec}s...`;
+                    status.textContent = `>_ Page ${currentPage}: ${doneNow}/${wallets.length} loaded. Server cooldown: auto-continuing ${remaining} remaining in ${sec}s...`;
                     await sleep(1000);
                 }
             }
 
             if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
 
-            updatePageRetryButton();
+            pauseBtn.style.display = "none";
+            updatePageControlButtons();
+
             const okCount = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
             const errCount = wallets.filter((w) => pointsCache.get(w)?.status === "error").length;
 
             if (errCount > 0) {
                 status.className = "status error";
-                status.textContent = `>_ Page ${currentPage}: Loaded ${okCount}/${wallets.length} points (${errCount} failed). Click "Retry Failed Points".`;
+                status.textContent = `>_ Page ${currentPage}: Loaded ${okCount}/${wallets.length} points (${errCount} failed). Click "Retry Remaining".`;
             } else {
                 status.className = "status ok";
                 status.textContent = `>_ Page ${currentPage}: All ${okCount}/${wallets.length} Helm Testnet Points loaded!`;
@@ -1312,6 +1434,7 @@
             document.getElementById("copyAllBtn").disabled = true;
             document.getElementById("csvBtn").disabled = true;
             document.getElementById("retryPageBtn").style.display = "none";
+            document.getElementById("pauseResumeBtn").style.display = "none";
             status.className = "status";
             status.textContent = customRpc
                 ? ">_ Connecting to your custom RPC..."
@@ -1556,7 +1679,7 @@
                 .join("");
 
             renderPagination(totalItems, totalPages);
-            updatePageRetryButton();
+            updatePageControlButtons();
 
             if (triggerFetch && currentVisibleSlice.length > 0) {
                 loadPageTestnetPoints(currentVisibleSlice.map((h) => h.wallet), currentScanId, false);
