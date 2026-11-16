@@ -519,7 +519,7 @@
         .points-err-wrap {
             display: inline-flex;
             align-items: center;
-            gap: 0.45rem;
+            gap: 0.4rem;
         }
 
         .retry-inline-btn {
@@ -527,8 +527,8 @@
             border: 1px solid var(--danger);
             color: var(--danger);
             font-family: var(--font-code);
-            font-size: 0.74rem;
-            padding: 0.18rem 0.48rem;
+            font-size: 0.72rem;
+            padding: 0.18rem 0.45rem;
             border-radius: 4px;
             cursor: pointer;
         }
@@ -536,6 +536,11 @@
         .retry-inline-btn:hover {
             background: var(--danger);
             color: #000;
+        }
+
+        .err-reason {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
         }
 
         .ext-link-icon {
@@ -690,9 +695,9 @@
                         <p class="hint">Leave empty to use built-in default RPC.</p>
                     </div>
                     <div>
-                        <label for="proxyInput"><i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> Custom CORS Proxy / Worker (Optional)</label>
-                        <input id="proxyInput" value="" placeholder="https://your-worker.workers.dev/?url=" autocomplete="off" />
-                        <p class="hint">Optional Cloudflare Worker URL for zero-limit Testnet Points fetching.</p>
+                        <label for="proxyInput"><i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> Helm Proxy URL (Local / Worker)</label>
+                        <input id="proxyInput" value="http://localhost:8787/?url=" placeholder="http://localhost:8787/?url=" autocomplete="off" />
+                        <p class="hint">Auto-uses local <code>node proxy.js</code> or Tampermonkey if running, otherwise falls back to public readers.</p>
                     </div>
                 </div>
             </div>
@@ -707,11 +712,14 @@
                 <button id="csvBtn" class="btn" onclick="downloadCSV()" disabled>
                     <i class="fa-solid fa-file-csv"></i> Download CSV
                 </button>
+                <button type="button" class="btn" onclick="testHelmBridge()">
+                    <i class="fa-solid fa-plug-circle-check"></i> Test Points Connection
+                </button>
                 <button type="button" class="btn btn-ghost" onclick="toggleCustomRpc()">
                     <i class="fa-solid fa-sliders"></i> RPC &amp; Proxy Settings
                 </button>
             </div>
-            <div id="status" class="status">&gt;_ Ready. Using built-in default RPC.</div>
+            <div id="status" class="status">&gt;_ Ready. Click "Test Points Connection" or "Scan All Holders".</div>
         </div>
 
         <div id="statsSection" class="stats" style="display: none;">
@@ -863,7 +871,7 @@
         })();
     </script>
 
-    <!-- SOLANA HOLDER SCANNER + PAGE-SCOPED HELM TESTNET POINTS + SORTING + PAGINATION -->
+    <!-- SOLANA HOLDER SCANNER + MULTI-BRIDGE HELM TESTNET POINTS -->
     <script>
         const DEFAULT_DEVNET_RPC = [
             "https://devnet.helius-rpc.com/?api-key=",
@@ -878,12 +886,11 @@
         let currentPageBatchId = 0;
         let currentVisibleSlice = [];
 
-        // Global sort & pagination state (operates on FULL dataset)
         let sortField = "balance";
         let sortOrder = "desc";
         let currentPage = 1;
 
-        // Cache: wallet -> { status: 'loading' | 'ok' | 'error', display: string, numeric: number }
+        // Cache: wallet -> { status: 'loading' | 'ok' | 'error', display: string, numeric: number, reason?: string }
         const pointsCache = new Map();
 
         function sleep(ms) {
@@ -932,89 +939,152 @@
             throw new Error("Token Mint address Devnet ba Mainnet kothao pawa jayni!");
         }
 
-        // Parse "Testnet Points" from Helm Trading SSR HTML
-        function extractTestnetPoints(html) {
-            try {
-                const doc = new DOMParser().parseFromString(html, "text/html");
-                const divs = doc.querySelectorAll("div");
-                for (const div of divs) {
-                    if (div.children.length === 0 && div.textContent.trim() === "Testnet Points") {
-                        const wrapper = div.parentElement?.parentElement || div.parentElement;
-                        const span = wrapper?.querySelector("span");
-                        if (span && span.textContent.trim()) {
-                            return span.textContent.trim();
+        // Parse "Testnet Points" from HTML or Markdown text
+        function extractTestnetPoints(raw) {
+            if (!raw) return null;
+
+            // 1. HTML DOM extraction
+            if (raw.includes("<")) {
+                try {
+                    const doc = new DOMParser().parseFromString(raw, "text/html");
+                    const divs = doc.querySelectorAll("div");
+                    for (const div of divs) {
+                        if (div.children.length === 0 && div.textContent.trim() === "Testnet Points") {
+                            const wrapper = div.parentElement?.parentElement || div.parentElement;
+                            const span = wrapper?.querySelector("span");
+                            if (span && span.textContent.trim()) {
+                                return span.textContent.trim();
+                            }
                         }
                     }
-                }
-            } catch (_) {}
+                } catch (_) {}
 
-            const match = html.match(/Testnet Points[\s\S]{0,250}?<span[^>]*>([\d,.\s]+)<\/span>/i);
-            if (match && match[1]) {
-                return match[1].trim();
+                const htmlMatch = raw.match(/Testnet Points[\s\S]{0,280}?<span[^>]*>([\d,.]+)<\/span>/i);
+                if (htmlMatch && htmlMatch[1]) {
+                    return htmlMatch[1].trim();
+                }
             }
+
+            // 2. Plain text / Markdown extraction (e.g. from r.jina.ai)
+            const mdMatch = raw.match(/Testnet Points[\s\S]{0,140}?Earned during the current testnet\s+([\d,]+(?:\.\d+)?)/i);
+            if (mdMatch && mdMatch[1]) {
+                return mdMatch[1].trim();
+            }
+
+            const simpleMatch = raw.match(/Testnet Points\s+([\d,]+(?:\.\d+)?)/i);
+            if (simpleMatch && simpleMatch[1]) {
+                return simpleMatch[1].trim();
+            }
+
             return null;
         }
 
-        // Fetch Helm Trading profile HTML via Custom Worker or CORS proxies
+        // Fetch Helm Trading profile via Tampermonkey Bridge, Local/Worker Proxy, or Jina Reader
         async function fetchWalletTestnetPoints(wallet) {
             const profileUrl = `https://helm.trading/profile/${wallet}`;
-            const customProxy = document.getElementById("proxyInput").value.trim();
+            let lastReason = "Blocked";
 
-            const sources = [];
-            if (customProxy) {
-                const fullCustom = customProxy.includes("?")
-                    ? `${customProxy}${encodeURIComponent(profileUrl)}`
-                    : `${customProxy.replace(/\/$/, "")}/?url=${encodeURIComponent(profileUrl)}`;
-                sources.push({ url: fullCustom, type: "text" });
-            }
-
-            sources.push(
-                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`, type: "allorigins-json" },
-                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, type: "text" },
-                { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(profileUrl)}`, type: "text" }
-            );
-
-            for (const src of sources) {
+            // Bridge 1: Tampermonkey Userscript (Direct Browser Fetch, Zero CORS/CF block)
+            if (typeof window.__HELM_GM_FETCH__ === "function") {
                 try {
-                    const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 14000);
-                    const res = await fetch(src.url, { signal: controller.signal });
-                    clearTimeout(timer);
-
-                    if (res.status === 404) {
-                        return { status: "ok", display: "0", numeric: 0 };
-                    }
-                    if (!res.ok) continue;
-
-                    let html = "";
-                    if (src.type === "allorigins-json") {
-                        const json = await res.json();
-                        if (json?.status?.http_code === 404) {
-                            return { status: "ok", display: "0", numeric: 0 };
+                    const res = await window.__HELM_GM_FETCH__(profileUrl);
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0, via: "Tampermonkey" };
+                    if (res.status === 200 && res.text) {
+                        const pts = extractTestnetPoints(res.text);
+                        if (pts !== null) {
+                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0, via: "Tampermonkey" };
                         }
-                        html = json?.contents || "";
-                    } else {
-                        html = await res.text();
+                        if (res.text.includes("_next")) {
+                            return { status: "ok", display: "0", numeric: 0, via: "Tampermonkey" };
+                        }
                     }
-
-                    if (!html || html.length < 200) continue;
-
-                    const extracted = extractTestnetPoints(html);
-                    if (extracted !== null) {
-                        const numeric = Number(extracted.replace(/,/g, "")) || 0;
-                        return { status: "ok", display: extracted, numeric };
-                    }
-
-                    // Valid Helm profile page loaded, but user has 0 points
-                    if (html.includes("_next") && (html.includes("Helm") || html.includes("Star Trader") || html.includes("No bio"))) {
-                        return { status: "ok", display: "0", numeric: 0 };
-                    }
-                } catch (_) {
-                    // Try next fallback source
+                    lastReason = `GM HTTP ${res.status}`;
+                } catch (e) {
+                    lastReason = "GM Error";
                 }
             }
 
-            return { status: "error", display: "Failed", numeric: -1 };
+            // Bridge 2: Local Node Proxy (http://localhost:8787) or Custom Worker URL
+            const customProxy = document.getElementById("proxyInput").value.trim();
+            if (customProxy) {
+                try {
+                    const fullProxyUrl = customProxy.includes("?")
+                        ? `${customProxy}${encodeURIComponent(profileUrl)}`
+                        : `${customProxy.replace(/\/$/, "")}/?url=${encodeURIComponent(profileUrl)}`;
+
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 12000);
+                    const res = await fetch(fullProxyUrl, { signal: controller.signal });
+                    clearTimeout(timer);
+
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0, via: "Proxy" };
+                    if (res.status === 403) {
+                        lastReason = "CF 403";
+                    } else if (res.ok) {
+                        const html = await res.text();
+                        const pts = extractTestnetPoints(html);
+                        if (pts !== null) {
+                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0, via: "Proxy" };
+                        }
+                        if (html.includes("_next")) {
+                            return { status: "ok", display: "0", numeric: 0, via: "Proxy" };
+                        }
+                        lastReason = "Parse 0";
+                    } else {
+                        lastReason = `HTTP ${res.status}`;
+                    }
+                } catch (_) {
+                    lastReason = "Proxy Offline";
+                }
+            }
+
+            // Bridge 3: Jina Reader (Headless Browser Renderer with CORS enabled)
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 15000);
+                const res = await fetch(`https://r.jina.ai/${profileUrl}`, {
+                    headers: { "Accept": "text/plain" },
+                    signal: controller.signal
+                });
+                clearTimeout(timer);
+
+                if (res.status === 404) return { status: "ok", display: "0", numeric: 0, via: "Jina" };
+                if (res.ok) {
+                    const text = await res.text();
+                    const pts = extractTestnetPoints(text);
+                    if (pts !== null) {
+                        return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0, via: "Jina" };
+                    }
+                    if (text.includes("Star Trader") || text.includes("No bio") || text.includes("PnL Curve")) {
+                        return { status: "ok", display: "0", numeric: 0, via: "Jina" };
+                    }
+                    lastReason = "CF Block";
+                } else {
+                    lastReason = `Jina ${res.status}`;
+                }
+            } catch (_) {
+                if (lastReason === "Proxy Offline") {
+                    lastReason = "No Proxy";
+                }
+            }
+
+            return { status: "error", display: "Failed", numeric: -1, reason: lastReason };
+        }
+
+        async function testHelmBridge() {
+            const status = document.getElementById("status");
+            const testWallet = "8WhWQoUs1Tgzhyw4ufYNPEztVhqo6m5SNgWrueRXMsJV";
+            status.className = "status";
+            status.textContent = `>_ Testing Helm connection with sample wallet (${testWallet.slice(0, 6)}...${testWallet.slice(-4)})...`;
+
+            const res = await fetchWalletTestnetPoints(testWallet);
+            if (res.status === "ok") {
+                status.className = "status ok";
+                status.textContent = `>_ Connection OK via ${res.via}! Sample wallet Testnet Points = ${res.display}`;
+            } else {
+                status.className = "status error";
+                status.textContent = `>_ Connection Failed (${res.reason}). Run "node proxy.js" locally or enable Tampermonkey script!`;
+            }
         }
 
         function formatPointsCell(wallet) {
@@ -1027,9 +1097,10 @@
             if (entry.status === "error") {
                 return `
                     <span class="points-err-wrap">
-                        <button class="retry-inline-btn" onclick="retrySingleWallet('${wallet}')" title="Retry fetching points">
+                        <button class="retry-inline-btn" onclick="retrySingleWallet('${wallet}')" title="Reason: ${entry.reason || 'Failed'}">
                             <i class="fa-solid fa-rotate-right"></i> Retry
                         </button>
+                        <span class="err-reason">(${entry.reason || "Blocked"})</span>
                         <a href="${profileUrl}" target="_blank" rel="noopener" class="ext-link-icon" title="Open Helm Profile">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                         </a>
@@ -1061,13 +1132,12 @@
             retryBtn.style.display = hasFailedOnPage ? "inline-flex" : "none";
         }
 
-        // Fetch Testnet Points ONLY for the currently visible page (100 rows max)
         async function loadPageTestnetPoints(wallets, scanId, forceRetry = false) {
             if (!wallets.length) return;
 
             const batchId = ++currentPageBatchId;
             const status = document.getElementById("status");
-            const customProxy = document.getElementById("proxyInput").value.trim();
+            const hasFastBridge = typeof window.__HELM_GM_FETCH__ === "function" || document.getElementById("proxyInput").value.trim().includes("localhost");
 
             const queue = wallets.filter((w) => {
                 const cached = pointsCache.get(w);
@@ -1088,9 +1158,8 @@
 
             let completed = wallets.length - queue.length;
             let index = 0;
-            // Faster concurrency if using custom Cloudflare Worker; gentle pacing on free proxies
-            const concurrency = customProxy ? 8 : 3;
-            const delayMs = customProxy ? 20 : 220;
+            const concurrency = hasFastBridge ? 6 : 2;
+            const delayMs = hasFastBridge ? 40 : 450;
 
             async function worker() {
                 while (index < queue.length) {
@@ -1104,7 +1173,7 @@
                     completed++;
 
                     status.className = "status ok";
-                    status.textContent = `>_ Page ${currentPage}: Loaded Testnet Points (${completed}/${wallets.length})...`;
+                    status.textContent = `>_ Page ${currentPage}: Fetching Testnet Points (${completed}/${wallets.length})...`;
 
                     if (delayMs > 0) await sleep(delayMs);
                 }
@@ -1118,8 +1187,8 @@
             const failedOnPage = wallets.filter((w) => pointsCache.get(w)?.status === "error").length;
 
             if (failedOnPage > 0) {
-                status.className = "status ok";
-                status.textContent = `>_ Page ${currentPage}: Loaded ${wallets.length - failedOnPage}/${wallets.length} points (${failedOnPage} rate-limited — click Retry Page Points).`;
+                status.className = "status error";
+                status.textContent = `>_ Page ${currentPage}: ${wallets.length - failedOnPage}/${wallets.length} loaded, ${failedOnPage} failed. Run "node proxy.js" or Tampermonkey for 100% success.`;
             } else {
                 status.className = "status ok";
                 status.textContent = `>_ Page ${currentPage}: All ${wallets.length} Helm Testnet Points loaded!`;
