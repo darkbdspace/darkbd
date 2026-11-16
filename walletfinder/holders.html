@@ -268,7 +268,7 @@
 
         .settings-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 1rem;
         }
 
@@ -516,6 +516,11 @@
             font-size: 0.8rem;
         }
 
+        .points-wait {
+            color: var(--accent);
+            font-size: 0.8rem;
+        }
+
         .points-err-wrap {
             display: inline-flex;
             align-items: center;
@@ -536,11 +541,6 @@
         .retry-inline-btn:hover {
             background: var(--danger);
             color: #000;
-        }
-
-        .err-reason {
-            font-size: 0.72rem;
-            color: var(--text-secondary);
         }
 
         .ext-link-icon {
@@ -695,9 +695,14 @@
                         <p class="hint">Leave empty to use built-in default RPC.</p>
                     </div>
                     <div>
-                        <label for="proxyInput"><i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> Helm Proxy URL (Local / Worker)</label>
+                        <label for="proxyInput"><i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> Local / Worker Proxy URL (Optional)</label>
                         <input id="proxyInput" value="http://localhost:8787/?url=" placeholder="http://localhost:8787/?url=" autocomplete="off" />
-                        <p class="hint">Auto-uses local <code>node proxy.js</code> or Tampermonkey if running, otherwise falls back to public readers.</p>
+                        <p class="hint">Auto-detected if running. Otherwise uses auto-cooldown reader.</p>
+                    </div>
+                    <div>
+                        <label for="jinaKeyInput"><i class="fa-solid fa-key" style="color:var(--accent)"></i> Free Jina API Key (Optional - 200 RPM)</label>
+                        <input id="jinaKeyInput" value="" placeholder="jina_..." autocomplete="off" oninput="saveSettings()" />
+                        <p class="hint">Without key: auto-waits 20s every 15 requests until all 100 finish.</p>
                     </div>
                 </div>
             </div>
@@ -712,14 +717,11 @@
                 <button id="csvBtn" class="btn" onclick="downloadCSV()" disabled>
                     <i class="fa-solid fa-file-csv"></i> Download CSV
                 </button>
-                <button type="button" class="btn" onclick="testHelmBridge()">
-                    <i class="fa-solid fa-plug-circle-check"></i> Test Points Connection
-                </button>
                 <button type="button" class="btn btn-ghost" onclick="toggleCustomRpc()">
                     <i class="fa-solid fa-sliders"></i> RPC &amp; Proxy Settings
                 </button>
             </div>
-            <div id="status" class="status">&gt;_ Ready. Click "Test Points Connection" or "Scan All Holders".</div>
+            <div id="status" class="status">&gt;_ Ready. Click "Scan All Holders" to load holders &amp; Helm Testnet Points.</div>
         </div>
 
         <div id="statsSection" class="stats" style="display: none;">
@@ -751,7 +753,7 @@
                         oninput="onSearchChange()"
                     />
                     <button id="retryPageBtn" class="btn copy-mini" onclick="retryCurrentPagePoints()" style="display: none;">
-                        <i class="fa-solid fa-rotate-right"></i> Retry Page Points
+                        <i class="fa-solid fa-rotate-right"></i> Retry Failed Points
                     </button>
                 </div>
                 <div class="toolbar-right">
@@ -871,7 +873,7 @@
         })();
     </script>
 
-    <!-- SOLANA HOLDER SCANNER + MULTI-BRIDGE HELM TESTNET POINTS -->
+    <!-- SOLANA HOLDER SCANNER + AUTO-COOLDOWN HELM TESTNET POINTS -->
     <script>
         const DEFAULT_DEVNET_RPC = [
             "https://devnet.helius-rpc.com/?api-key=",
@@ -890,8 +892,19 @@
         let sortOrder = "desc";
         let currentPage = 1;
 
-        // Cache: wallet -> { status: 'loading' | 'ok' | 'error', display: string, numeric: number, reason?: string }
+        // Cache: wallet -> { status: 'queued' | 'loading' | 'ok' | 'ratelimit' | 'error', display: string, numeric: number }
         const pointsCache = new Map();
+
+        // Load saved Jina API key if present
+        const savedJinaKey = localStorage.getItem("dark_jina_api_key");
+        if (savedJinaKey) {
+            document.getElementById("jinaKeyInput").value = savedJinaKey;
+        }
+
+        function saveSettings() {
+            const jinaKey = document.getElementById("jinaKeyInput").value.trim();
+            localStorage.setItem("dark_jina_api_key", jinaKey);
+        }
 
         function sleep(ms) {
             return new Promise((r) => setTimeout(r, ms));
@@ -943,7 +956,6 @@
         function extractTestnetPoints(raw) {
             if (!raw) return null;
 
-            // 1. HTML DOM extraction
             if (raw.includes("<")) {
                 try {
                     const doc = new DOMParser().parseFromString(raw, "text/html");
@@ -965,7 +977,6 @@
                 }
             }
 
-            // 2. Plain text / Markdown extraction (e.g. from r.jina.ai)
             const mdMatch = raw.match(/Testnet Points[\s\S]{0,140}?Earned during the current testnet\s+([\d,]+(?:\.\d+)?)/i);
             if (mdMatch && mdMatch[1]) {
                 return mdMatch[1].trim();
@@ -979,34 +990,57 @@
             return null;
         }
 
-        // Fetch Helm Trading profile via Tampermonkey Bridge, Local/Worker Proxy, or Jina Reader
-        async function fetchWalletTestnetPoints(wallet) {
-            const profileUrl = `https://helm.trading/profile/${wallet}`;
-            let lastReason = "Blocked";
-
-            // Bridge 1: Tampermonkey Userscript (Direct Browser Fetch, Zero CORS/CF block)
+        // Check once per page batch if local proxy (localhost:8787) is running
+        async function detectActiveBridge() {
             if (typeof window.__HELM_GM_FETCH__ === "function") {
+                return "tampermonkey";
+            }
+            const customProxy = document.getElementById("proxyInput").value.trim();
+            if (customProxy) {
+                try {
+                    const base = customProxy.split("?")[0].replace(/\/$/, "");
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 900);
+                    const res = await fetch(`${base}/health`, { signal: controller.signal });
+                    clearTimeout(timer);
+                    if (res.ok) return "proxy";
+                } catch (_) {
+                    if (!customProxy.includes("localhost") && !customProxy.includes("127.0.0.1")) {
+                        return "proxy";
+                    }
+                }
+            }
+            return "jina";
+        }
+
+        // Fetch single wallet points using active bridge
+        async function fetchWalletTestnetPoints(wallet, bridgeMode) {
+            const profileUrl = `https://helm.trading/profile/${wallet}`;
+
+            // Mode 1: Tampermonkey
+            if (bridgeMode === "tampermonkey" && typeof window.__HELM_GM_FETCH__ === "function") {
                 try {
                     const res = await window.__HELM_GM_FETCH__(profileUrl);
-                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0, via: "Tampermonkey" };
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                    if (res.status === 429) return { status: "ratelimit", display: "429", numeric: -1 };
                     if (res.status === 200 && res.text) {
                         const pts = extractTestnetPoints(res.text);
                         if (pts !== null) {
-                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0, via: "Tampermonkey" };
+                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
                         }
                         if (res.text.includes("_next")) {
-                            return { status: "ok", display: "0", numeric: 0, via: "Tampermonkey" };
+                            return { status: "ok", display: "0", numeric: 0 };
                         }
                     }
-                    lastReason = `GM HTTP ${res.status}`;
-                } catch (e) {
-                    lastReason = "GM Error";
+                    return { status: "error", display: "Failed", numeric: -1 };
+                } catch (_) {
+                    return { status: "error", display: "Failed", numeric: -1 };
                 }
             }
 
-            // Bridge 2: Local Node Proxy (http://localhost:8787) or Custom Worker URL
-            const customProxy = document.getElementById("proxyInput").value.trim();
-            if (customProxy) {
+            // Mode 2: Local Node Proxy or Custom Worker
+            if (bridgeMode === "proxy") {
+                const customProxy = document.getElementById("proxyInput").value.trim();
                 try {
                     const fullProxyUrl = customProxy.includes("?")
                         ? `${customProxy}${encodeURIComponent(profileUrl)}`
@@ -1017,73 +1051,56 @@
                     const res = await fetch(fullProxyUrl, { signal: controller.signal });
                     clearTimeout(timer);
 
-                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0, via: "Proxy" };
-                    if (res.status === 403) {
-                        lastReason = "CF 403";
-                    } else if (res.ok) {
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                    if (res.status === 429) return { status: "ratelimit", display: "429", numeric: -1 };
+                    if (res.ok) {
                         const html = await res.text();
                         const pts = extractTestnetPoints(html);
                         if (pts !== null) {
-                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0, via: "Proxy" };
+                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
                         }
                         if (html.includes("_next")) {
-                            return { status: "ok", display: "0", numeric: 0, via: "Proxy" };
+                            return { status: "ok", display: "0", numeric: 0 };
                         }
-                        lastReason = "Parse 0";
-                    } else {
-                        lastReason = `HTTP ${res.status}`;
                     }
+                    return { status: "error", display: "Failed", numeric: -1 };
                 } catch (_) {
-                    lastReason = "Proxy Offline";
+                    return { status: "error", display: "Failed", numeric: -1 };
                 }
             }
 
-            // Bridge 3: Jina Reader (Headless Browser Renderer with CORS enabled)
+            // Mode 3: Jina Reader (with optional free API key)
             try {
+                const jinaKey = document.getElementById("jinaKeyInput").value.trim();
+                const headers = { "Accept": "text/plain" };
+                if (jinaKey) {
+                    headers["Authorization"] = `Bearer ${jinaKey}`;
+                }
+
                 const controller = new AbortController();
                 const timer = setTimeout(() => controller.abort(), 15000);
                 const res = await fetch(`https://r.jina.ai/${profileUrl}`, {
-                    headers: { "Accept": "text/plain" },
+                    headers,
                     signal: controller.signal
                 });
                 clearTimeout(timer);
 
-                if (res.status === 404) return { status: "ok", display: "0", numeric: 0, via: "Jina" };
+                if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                if (res.status === 429) return { status: "ratelimit", display: "429", numeric: -1 };
+
                 if (res.ok) {
                     const text = await res.text();
                     const pts = extractTestnetPoints(text);
                     if (pts !== null) {
-                        return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0, via: "Jina" };
+                        return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
                     }
                     if (text.includes("Star Trader") || text.includes("No bio") || text.includes("PnL Curve")) {
-                        return { status: "ok", display: "0", numeric: 0, via: "Jina" };
+                        return { status: "ok", display: "0", numeric: 0 };
                     }
-                    lastReason = "CF Block";
-                } else {
-                    lastReason = `Jina ${res.status}`;
                 }
+                return { status: "error", display: "Failed", numeric: -1 };
             } catch (_) {
-                if (lastReason === "Proxy Offline") {
-                    lastReason = "No Proxy";
-                }
-            }
-
-            return { status: "error", display: "Failed", numeric: -1, reason: lastReason };
-        }
-
-        async function testHelmBridge() {
-            const status = document.getElementById("status");
-            const testWallet = "8WhWQoUs1Tgzhyw4ufYNPEztVhqo6m5SNgWrueRXMsJV";
-            status.className = "status";
-            status.textContent = `>_ Testing Helm connection with sample wallet (${testWallet.slice(0, 6)}...${testWallet.slice(-4)})...`;
-
-            const res = await fetchWalletTestnetPoints(testWallet);
-            if (res.status === "ok") {
-                status.className = "status ok";
-                status.textContent = `>_ Connection OK via ${res.via}! Sample wallet Testnet Points = ${res.display}`;
-            } else {
-                status.className = "status error";
-                status.textContent = `>_ Connection Failed (${res.reason}). Run "node proxy.js" locally or enable Tampermonkey script!`;
+                return { status: "error", display: "Failed", numeric: -1 };
             }
         }
 
@@ -1091,16 +1108,21 @@
             const entry = pointsCache.get(wallet);
             const profileUrl = `https://helm.trading/profile/${wallet}`;
 
-            if (!entry || entry.status === "loading") {
-                return `<span class="points-muted"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</span>`;
+            if (!entry || entry.status === "queued") {
+                return `<span class="points-muted"><i class="fa-regular fa-clock"></i> Queued</span>`;
+            }
+            if (entry.status === "loading") {
+                return `<span class="points-muted"><i class="fa-solid fa-spinner fa-spin"></i> Fetching...</span>`;
+            }
+            if (entry.status === "ratelimit") {
+                return `<span class="points-wait"><i class="fa-solid fa-hourglass-half"></i> Cooldown...</span>`;
             }
             if (entry.status === "error") {
                 return `
                     <span class="points-err-wrap">
-                        <button class="retry-inline-btn" onclick="retrySingleWallet('${wallet}')" title="Reason: ${entry.reason || 'Failed'}">
+                        <button class="retry-inline-btn" onclick="retrySingleWallet('${wallet}')" title="Retry fetching points">
                             <i class="fa-solid fa-rotate-right"></i> Retry
                         </button>
-                        <span class="err-reason">(${entry.reason || "Blocked"})</span>
                         <a href="${profileUrl}" target="_blank" rel="noopener" class="ext-link-icon" title="Open Helm Profile">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                         </a>
@@ -1118,9 +1140,13 @@
         }
 
         async function retrySingleWallet(wallet) {
+            const bridgeMode = await detectActiveBridge();
             pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
             updateSinglePointsCell(wallet);
-            const result = await fetchWalletTestnetPoints(wallet);
+            const result = await fetchWalletTestnetPoints(wallet, bridgeMode);
+            if (result.status === "ratelimit") {
+                result.status = "error";
+            }
             pointsCache.set(wallet, result);
             updateSinglePointsCell(wallet);
             updatePageRetryButton();
@@ -1132,66 +1158,131 @@
             retryBtn.style.display = hasFailedOnPage ? "inline-flex" : "none";
         }
 
+        // Auto-cooldown & auto-retry queue so ALL 100 on the page finish without stopping at 15!
         async function loadPageTestnetPoints(wallets, scanId, forceRetry = false) {
             if (!wallets.length) return;
 
             const batchId = ++currentPageBatchId;
             const status = document.getElementById("status");
-            const hasFastBridge = typeof window.__HELM_GM_FETCH__ === "function" || document.getElementById("proxyInput").value.trim().includes("localhost");
+            const bridgeMode = await detectActiveBridge();
+            const hasJinaKey = Boolean(document.getElementById("jinaKeyInput").value.trim());
 
-            const queue = wallets.filter((w) => {
+            const pending = wallets.filter((w) => {
                 const cached = pointsCache.get(w);
                 if (!cached) return true;
                 if (forceRetry && cached.status === "error") return true;
                 return false;
             });
 
-            if (queue.length === 0) {
+            if (pending.length === 0) {
                 updatePageRetryButton();
                 return;
             }
 
-            for (const w of queue) {
-                pointsCache.set(w, { status: "loading", display: "...", numeric: -1 });
+            for (const w of pending) {
+                pointsCache.set(w, { status: "queued", display: "...", numeric: -1 });
                 updateSinglePointsCell(w);
             }
 
-            let completed = wallets.length - queue.length;
-            let index = 0;
-            const concurrency = hasFastBridge ? 6 : 2;
-            const delayMs = hasFastBridge ? 40 : 450;
+            const isFast = bridgeMode === "tampermonkey" || bridgeMode === "proxy" || hasJinaKey;
+            const concurrency = isFast ? 4 : 2;
+            const delayMs = isFast ? 150 : 650;
 
-            async function worker() {
-                while (index < queue.length) {
+            let pass = 0;
+            const maxPasses = 8; // Enough automatic cooldown cycles to finish 100/100 even at 15/min
+
+            while (pass < maxPasses) {
+                if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
+
+                const roundQueue = wallets.filter((w) => {
+                    const st = pointsCache.get(w)?.status;
+                    return st === "queued" || st === "ratelimit";
+                });
+
+                if (roundQueue.length === 0) break;
+
+                let idx = 0;
+                let hitRateLimit = false;
+
+                async function worker() {
+                    while (idx < roundQueue.length) {
+                        if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
+                        if (hitRateLimit && !isFast) return; // Pause immediately when 429 hits
+
+                        const wallet = roundQueue[idx++];
+                        pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
+                        updateSinglePointsCell(wallet);
+
+                        const result = await fetchWalletTestnetPoints(wallet, bridgeMode);
+                        if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
+
+                        if (result.status === "ratelimit") {
+                            hitRateLimit = true;
+                            pointsCache.set(wallet, { status: "ratelimit", display: "429", numeric: -1 });
+                            updateSinglePointsCell(wallet);
+                            return;
+                        }
+
+                        pointsCache.set(wallet, result);
+                        updateSinglePointsCell(wallet);
+
+                        const doneCount = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
+                        status.className = "status ok";
+                        status.textContent = `>_ Page ${currentPage}: Loaded ${doneCount}/${wallets.length} Testnet Points...`;
+
+                        if (delayMs > 0) await sleep(delayMs);
+                    }
+                }
+
+                await Promise.all(Array.from({ length: Math.min(concurrency, roundQueue.length) }, () => worker()));
+
+                if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
+
+                // Mark any unvisited items in roundQueue as ratelimit so they get picked up next pass
+                for (const w of roundQueue) {
+                    if (pointsCache.get(w)?.status === "queued") {
+                        pointsCache.set(w, { status: "ratelimit", display: "429", numeric: -1 });
+                        updateSinglePointsCell(w);
+                    }
+                }
+
+                const remaining = wallets.filter((w) => pointsCache.get(w)?.status === "ratelimit").length;
+                if (remaining === 0) break;
+
+                pass++;
+                if (pass >= maxPasses) {
+                    // Convert remaining to error so user can manually retry if needed
+                    for (const w of wallets) {
+                        if (pointsCache.get(w)?.status === "ratelimit") {
+                            pointsCache.set(w, { status: "error", display: "Failed", numeric: -1 });
+                            updateSinglePointsCell(w);
+                        }
+                    }
+                    break;
+                }
+
+                // Live countdown cooldown (22 seconds) before auto-resuming
+                const doneNow = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
+                for (let sec = 22; sec > 0; sec--) {
                     if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
-                    const wallet = queue[index++];
-                    const result = await fetchWalletTestnetPoints(wallet);
-                    if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
-
-                    pointsCache.set(wallet, result);
-                    updateSinglePointsCell(wallet);
-                    completed++;
-
-                    status.className = "status ok";
-                    status.textContent = `>_ Page ${currentPage}: Fetching Testnet Points (${completed}/${wallets.length})...`;
-
-                    if (delayMs > 0) await sleep(delayMs);
+                    status.className = "status";
+                    status.textContent = `>_ Page ${currentPage}: ${doneNow}/${wallets.length} loaded. Rate-limit cooldown: auto-resuming remaining ${remaining} in ${sec}s...`;
+                    await sleep(1000);
                 }
             }
-
-            await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, () => worker()));
 
             if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
 
             updatePageRetryButton();
-            const failedOnPage = wallets.filter((w) => pointsCache.get(w)?.status === "error").length;
+            const okCount = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
+            const errCount = wallets.filter((w) => pointsCache.get(w)?.status === "error").length;
 
-            if (failedOnPage > 0) {
+            if (errCount > 0) {
                 status.className = "status error";
-                status.textContent = `>_ Page ${currentPage}: ${wallets.length - failedOnPage}/${wallets.length} loaded, ${failedOnPage} failed. Run "node proxy.js" or Tampermonkey for 100% success.`;
+                status.textContent = `>_ Page ${currentPage}: Loaded ${okCount}/${wallets.length} points (${errCount} failed). Click "Retry Failed Points".`;
             } else {
                 status.className = "status ok";
-                status.textContent = `>_ Page ${currentPage}: All ${wallets.length} Helm Testnet Points loaded!`;
+                status.textContent = `>_ Page ${currentPage}: All ${okCount}/${wallets.length} Helm Testnet Points loaded!`;
             }
 
             if (sortField === "points") {
