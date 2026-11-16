@@ -700,9 +700,9 @@
                         <p class="hint">Auto-detected if running locally.</p>
                     </div>
                     <div>
-                        <label for="jinaKeyInput"><i class="fa-solid fa-key" style="color:var(--accent)"></i> Jina AI API Key (Saved Automatically)</label>
+                        <label for="jinaKeyInput"><i class="fa-solid fa-key" style="color:var(--accent)"></i> Custom Jina API Key (Optional)</label>
                         <input id="jinaKeyInput" value="" placeholder="jina_..." autocomplete="off" oninput="saveSettings()" />
-                        <p class="hint">Concurrency capped at 2 + auto-cooldown until all 100/100 finish.</p>
+                        <p class="hint">Leave empty to use built-in default Jina key. Paste your own key to override.</p>
                     </div>
                 </div>
             </div>
@@ -879,13 +879,20 @@
         })();
     </script>
 
-    <!-- SOLANA HOLDER SCANNER + PERSISTENT CACHE + AUTO-COOLDOWN HELM TESTNET POINTS -->
+    <!-- SOLANA HOLDER SCANNER + HIDDEN DEFAULT JINA KEY + AUTO-COOLDOWN HELM TESTNET POINTS -->
     <script>
         const DEFAULT_DEVNET_RPC = [
             "https://devnet.helius-rpc.com/?api-key=",
             "98e00548-e607-437e-8437-91ad083fa6c1"
         ].join("");
         const MAINNET_RPC = "https://api.mainnet-beta.solana.com";
+
+        // Built-in Jina API Key (hidden from UI by default, same as Helius RPC)
+        const DEFAULT_JINA_API_KEY = [
+            "jina_",
+            "YOUR_KEY_HERE"
+        ].join("");
+
         const PAGE_SIZE = 100;
         const CACHE_STORAGE_KEY = "helm_points_cache_v1";
 
@@ -942,7 +949,7 @@
             }
         }
 
-        // Load saved Jina API key if present
+        // Load custom override Jina API key if user entered one
         const savedJinaKey = localStorage.getItem("dark_jina_api_key");
         if (savedJinaKey) {
             document.getElementById("jinaKeyInput").value = savedJinaKey;
@@ -951,6 +958,15 @@
         function saveSettings() {
             const jinaKey = document.getElementById("jinaKeyInput").value.trim();
             localStorage.setItem("dark_jina_api_key", jinaKey);
+        }
+
+        function getActiveJinaKey() {
+            const customKey = document.getElementById("jinaKeyInput").value.trim();
+            if (customKey) return customKey;
+            if (DEFAULT_JINA_API_KEY && !DEFAULT_JINA_API_KEY.includes("jina_467d505e69d84369ba2bf8d2a5ff29f2dtjiIk6RfPA6ZikLZmQ-csx5tzmb")) {
+                return DEFAULT_JINA_API_KEY;
+            }
+            return "";
         }
 
         function sleep(ms) {
@@ -1085,7 +1101,7 @@
             return null;
         }
 
-        // Fetch single wallet points; any temporary block returns 'ratelimit' so auto-cooldown retries it!
+        // Fetch single wallet points; any temporary block returns 'ratelimit' so auto-cooldown retries it
         async function fetchWalletTestnetPoints(wallet, bridgeMode) {
             const profileUrl = `https://helm.trading/profile/${wallet}`;
 
@@ -1139,9 +1155,9 @@
                 }
             }
 
-            // Mode 3: Jina Reader (respects strict concurrency=2 on free key)
+            // Mode 3: Jina Reader (uses built-in DEFAULT_JINA_API_KEY or custom override)
             try {
-                const jinaKey = document.getElementById("jinaKeyInput").value.trim();
+                const jinaKey = getActiveJinaKey();
                 const headers = {
                     "Accept": "text/plain",
                     "X-Return-Format": "markdown",
@@ -1163,7 +1179,6 @@
 
                 if (res.ok) {
                     const text = await res.text();
-                    // Check if Cloudflare challenge page was returned instead of profile
                     if (text.includes("Just a moment...") || text.includes("Attention Required! | Cloudflare")) {
                         const fb = await fetchViaFallbackProxy(profileUrl);
                         return fb || { status: "ratelimit", display: "CF", numeric: -1 };
@@ -1178,7 +1193,6 @@
                     }
                 }
 
-                // On 429 / 403 / 422 / 5xx, try rotating to secondary proxy before triggering cooldown
                 const fb = await fetchViaFallbackProxy(profileUrl);
                 if (fb) return fb;
 
@@ -1242,7 +1256,7 @@
             isFetchPaused = !isFetchPaused;
             const btn = document.getElementById("pauseResumeBtn");
             if (isFetchPaused) {
-                currentPageBatchId++; // Cancel active worker loop
+                currentPageBatchId++;
                 btn.innerHTML = '<i class="fa-solid fa-play"></i> Resume Fetch';
                 for (const h of currentVisibleSlice) {
                     const st = pointsCache.get(h.wallet)?.status;
@@ -1277,7 +1291,7 @@
             const batchId = ++currentPageBatchId;
             const status = document.getElementById("status");
             const bridgeMode = await detectActiveBridge();
-            const hasJinaKey = Boolean(document.getElementById("jinaKeyInput").value.trim());
+            const hasJinaKey = Boolean(getActiveJinaKey());
 
             const pending = wallets.filter((w) => {
                 const cached = pointsCache.get(w);
@@ -1300,7 +1314,6 @@
                 updateSinglePointsCell(w);
             }
 
-            // Strictly respect Jina free key concurrency = 2!
             const concurrency = (bridgeMode === "tampermonkey" || bridgeMode === "proxy") ? 5 : 2;
             const delayMs = (bridgeMode === "tampermonkey" || bridgeMode === "proxy") ? 120 : (hasJinaKey ? 350 : 750);
 
@@ -1381,7 +1394,6 @@
                     break;
                 }
 
-                // Short 15-second cooldown before automatically continuing next batch
                 const doneNow = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
                 for (let sec = 15; sec > 0; sec--) {
                     if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
