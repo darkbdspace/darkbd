@@ -20,7 +20,6 @@
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Favicon (Website Icon) -->
-    <!--link rel="icon" type="image/png" href="icon.png"-->
     <link id="dynamic-favicon" rel="icon" type="image/png" href="icon.png">
     <style>
         /* ==================== CSS VARIABLES & THEMES ==================== */
@@ -83,10 +82,18 @@
             position: fixed;
             top: 0;
             width: 100%;
-            background: rgba(10, 12, 16, 0.7);
+            background: rgba(26, 11, 46, 0.78);
             backdrop-filter: blur(12px);
             z-index: 1000;
             border-bottom: 1px solid var(--border);
+        }
+
+        [data-theme="dark"] header {
+            background: rgba(10, 12, 16, 0.78);
+        }
+
+        [data-theme="light"] header {
+            background: rgba(248, 250, 252, 0.85);
         }
 
         nav {
@@ -136,6 +143,10 @@
         .theme-btn.active {
             background: var(--accent);
             color: #000;
+        }
+
+        [data-theme="light"] .theme-btn.active {
+            color: #fff;
         }
 
         /* ==================== HERO SECTION ==================== */
@@ -193,7 +204,7 @@
             font-size: 1.05rem;
         }
 
-        /* ==================== PROFILE IMAGE (5PX BORDER + ANALOG GLOW OUTSIDE) ==================== */
+        /* ==================== PROFILE IMAGE ==================== */
         .profile-card {
             position: relative;
             display: flex;
@@ -209,12 +220,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            
-            /* গ্র্যাডিয়েন্ট অ্যানিমেশন */
             background: conic-gradient(from 0deg, #ff9a9e, #fecfef, #f6d365, #fda085, #ff9a9e);
             animation: analogRotate 6s linear infinite;
-
-            /* ছবির বাইরে ছড়িয়ে পড়া সফট এনালগ গ্লো */
             box-shadow: 0 0 20px rgba(255, 154, 158, 0.45),
                         0 0 35px rgba(254, 207, 239, 0.3);
         }
@@ -226,8 +233,7 @@
         }
 
         .img-container {
-            /* বর্ডার সাইজ ৫ পিক্সেল (১০px বিয়োগ মানে দুইপাশে ৫px করে) */
-            width: calc(100% - 20px); 
+            width: calc(100% - 20px);
             height: calc(100% - 20px);
             border-radius: 50%;
             overflow: hidden;
@@ -241,7 +247,6 @@
             object-fit: cover;
             border-radius: 50%;
             display: block;
-            /* রিং ঘোরার সময় ছবিটিকে সোজা রাখার জন্য */
             animation: counterRotate 6s linear infinite;
         }
 
@@ -307,6 +312,24 @@
         .card p {
             color: var(--text-secondary);
             font-size: 0.95rem;
+        }
+
+        .project-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            height: 100%;
+        }
+
+        .project-link h3 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .project-link:hover h3 {
+            color: var(--accent);
         }
 
         .stat-card {
@@ -389,9 +412,9 @@
             <a href="#" class="logo">DARK</a>
             <div class="nav-right">
                 <div class="theme-switcher">
-                    <button class="theme-btn" onclick="setTheme('dark', event)"><i class="fa-solid fa-moon"></i> Dark</button>
-                    <button class="theme-btn active" onclick="setTheme('sun-gradient', event)"><i class="fa-solid fa-sun"></i> Sun</button>
-                    <button class="theme-btn" onclick="setTheme('light', event)"><i class="fa-solid fa-lightbulb"></i> Light</button>
+                    <button class="theme-btn" data-theme-target="dark" onclick="setTheme('dark', event)"><i class="fa-solid fa-moon"></i> Dark</button>
+                    <button class="theme-btn active" data-theme-target="sun-gradient" onclick="setTheme('sun-gradient', event)"><i class="fa-solid fa-sun"></i> Sun</button>
+                    <button class="theme-btn" data-theme-target="light" onclick="setTheme('light', event)"><i class="fa-solid fa-lightbulb"></i> Light</button>
                 </div>
             </div>
         </nav>
@@ -466,17 +489,23 @@
         </div>
     </section>
 
+    <!-- REAL LIFE PROJECTS -->
     <section class="section">
         <h2 class="section-title">Real Life Projects</h2>
         <div class="grid">
             <div class="card">
-                <a href="English/index.html"><h3>Self English Learning</h3></a>
+                <a href="checker/solanadevnet/index.html" class="project-link">
+                    <h3><span><i class="fa-solid fa-chart-column" style="color:var(--accent); margin-right:8px;"></i>Solana Devnet TX Checker</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.9rem; color:var(--accent);"></i></h3>
+                    <p>Unlimited Solana wallet transaction scanner, daily activity chart & paginated history.</p>
+                </a>
             </div>
             <div class="card">
                 <h3>Coming Soon!</h3>
+                <p>More Web3 & AI tools currently under development.</p>
             </div>
             <div class="card">
                 <h3>Coming Soon!</h3>
+                <p>More Web3 & AI tools currently under development.</p>
             </div>
         </div>
     </section>
@@ -517,29 +546,32 @@
     <script>
         function setTheme(themeName, event) {
             document.body.setAttribute('data-theme', themeName);
+            localStorage.setItem('dark_portfolio_theme', themeName);
             
-            // Update active state of buttons
             const buttons = document.querySelectorAll('.theme-btn');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            
-            if(event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
-            }
+            buttons.forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-theme-target') === themeName);
+            });
+        }
+
+        // Restore saved theme if user previously switched
+        const savedTheme = localStorage.getItem('dark_portfolio_theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
         }
     </script>
     <script>
         (function generateSunGlowFavicon() {
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.src = 'icon.png'; // আপনার আইকন ফাইলের নাম
+            img.src = 'icon.png';
     
             img.onload = function() {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // স্পেস বাড়ানোর জন্য ক্যানভাস সাইজ ১২৮px করা হয়েছে
                 const size = 128; 
-                const padding = 22; // গ্লো ছড়ানোর পর্যাপ্ত জায়গা
+                const padding = 22;
                 canvas.width = size;
                 canvas.height = size;
     
@@ -547,8 +579,6 @@
                 const centerY = size / 2;
                 const radius = (size - padding * 2) / 2;
     
-                /* ================= ১. গাঢ় ও স্পষ্ট সান গ্লো (DEEP SUN GLOW) ================= */
-                // ১ম লেয়ার: ওয়াইড সফট অরেঞ্জ গ্লো
                 ctx.shadowColor = '#ff7e5f';
                 ctx.shadowBlur = 24;
                 ctx.beginPath();
@@ -556,7 +586,6 @@
                 ctx.fillStyle = '#ff7e5f';
                 ctx.fill();
     
-                // ২য় লেয়ার: ব্রাইট সান ইয়েলো গ্লো (বাইরে গাঢ় দেখানোর জন্য)
                 ctx.shadowColor = '#ffd200';
                 ctx.shadowBlur = 12;
                 ctx.beginPath();
@@ -564,15 +593,13 @@
                 ctx.fillStyle = '#ffd200';
                 ctx.fill();
     
-                /* ================= ২. স্পষ্ট গ্লোয়িং রিং (VISIBLE GLOW RING) ================= */
                 ctx.shadowColor = '#ff4500';
                 ctx.shadowBlur = 8;
                 ctx.strokeStyle = '#ffa500';
-                ctx.lineWidth = 4; // রিংয়ের থিকনেস
+                ctx.lineWidth = 4;
                 ctx.stroke();
     
-                /* ================= ৩. আইকন ক্লিপিং ও ইমেজ ড্র ================= */
-                ctx.shadowBlur = 0; // ছবির ওপর যেন বাড়তি শ্যাডো না পড়ে
+                ctx.shadowBlur = 0;
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, radius - 1, 0, Math.PI * 2);
@@ -581,7 +608,6 @@
                 ctx.drawImage(img, padding, padding, size - padding * 2, size - padding * 2);
                 ctx.restore();
     
-                /* ================= ৪. ফ্যাভআইকন আপডেট ================= */
                 const favicon = document.getElementById('dynamic-favicon');
                 if (favicon) {
                     favicon.href = canvas.toDataURL('image/png');
