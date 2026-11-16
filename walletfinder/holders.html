@@ -408,7 +408,7 @@
         }
 
         .search-input {
-            max-width: 300px;
+            max-width: 280px;
         }
 
         .sort-pill {
@@ -755,6 +755,9 @@
                     <button id="pauseResumeBtn" class="btn copy-mini" onclick="togglePauseFetch()" style="display: none;">
                         <i class="fa-solid fa-pause"></i> Pause Fetch
                     </button>
+                    <button id="skipWaitBtn" class="btn copy-mini" onclick="skipCooldownWait()" style="display: none;">
+                        <i class="fa-solid fa-forward"></i> Skip Wait
+                    </button>
                     <button id="retryPageBtn" class="btn copy-mini" onclick="retryCurrentPagePoints()" style="display: none;">
                         <i class="fa-solid fa-rotate-right"></i> Retry Remaining
                     </button>
@@ -879,7 +882,7 @@
         })();
     </script>
 
-    <!-- SOLANA HOLDER SCANNER + HIDDEN DEFAULT JINA KEY + AUTO-COOLDOWN HELM TESTNET POINTS -->
+    <!-- SOLANA HOLDER SCANNER + ADAPTIVE COOLDOWN + HELM TESTNET POINTS -->
     <script>
         const DEFAULT_DEVNET_RPC = [
             "https://devnet.helius-rpc.com/?api-key=",
@@ -902,6 +905,7 @@
         let currentPageBatchId = 0;
         let currentVisibleSlice = [];
         let isFetchPaused = false;
+        let skipCooldownFlag = false;
 
         let sortField = "balance";
         let sortOrder = "desc";
@@ -971,6 +975,10 @@
 
         function sleep(ms) {
             return new Promise((r) => setTimeout(r, ms));
+        }
+
+        function skipCooldownWait() {
+            skipCooldownFlag = true;
         }
 
         function toggleCustomRpc() {
@@ -1074,31 +1082,47 @@
             return "jina";
         }
 
-        // Secondary IP fallback when Jina/Helm temporarily rate-limits
-        async function fetchViaFallbackProxy(profileUrl) {
-            const fallbacks = [
-                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`, json: true },
-                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, json: false }
+        // Fast parallel fallback across secondary CORS proxies
+        function fetchViaFallbackProxy(profileUrl) {
+            const providers = [
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, json: false },
+                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`, json: true }
             ];
-            for (const fb of fallbacks) {
-                try {
-                    const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 9000);
-                    const res = await fetch(fb.url, { signal: controller.signal });
-                    clearTimeout(timer);
-                    if (!res.ok) continue;
-                    const html = fb.json ? (await res.json())?.contents : await res.text();
-                    if (!html) continue;
-                    const pts = extractTestnetPoints(html);
-                    if (pts !== null) {
-                        return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
+
+            return new Promise((resolve) => {
+                let settled = false;
+                let pending = providers.length;
+
+                providers.forEach(async (fb) => {
+                    try {
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 7000);
+                        const res = await fetch(fb.url, { signal: controller.signal });
+                        clearTimeout(timer);
+                        if (!res.ok) throw new Error("not ok");
+
+                        const html = fb.json ? (await res.json())?.contents : await res.text();
+                        if (!html) throw new Error("empty");
+
+                        const pts = extractTestnetPoints(html);
+                        if (pts !== null && !settled) {
+                            settled = true;
+                            resolve({ status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 });
+                            return;
+                        }
+                        if (html.includes("_next") && (html.includes("Helm") || html.includes("Star Trader")) && !settled) {
+                            settled = true;
+                            resolve({ status: "ok", display: "0", numeric: 0 });
+                            return;
+                        }
+                    } catch (_) {}
+
+                    pending--;
+                    if (pending === 0 && !settled) {
+                        resolve(null);
                     }
-                    if (html.includes("_next") && (html.includes("Helm") || html.includes("Star Trader"))) {
-                        return { status: "ok", display: "0", numeric: 0 };
-                    }
-                } catch (_) {}
-            }
-            return null;
+                });
+            });
         }
 
         // Fetch single wallet points; any temporary block returns 'ratelimit' so auto-cooldown retries it
@@ -1168,7 +1192,7 @@
                 }
 
                 const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 16000);
+                const timer = setTimeout(() => controller.abort(), 14000);
                 const res = await fetch(`https://r.jina.ai/${profileUrl}`, {
                     headers,
                     signal: controller.signal
@@ -1198,6 +1222,8 @@
 
                 return { status: "ratelimit", display: String(res.status), numeric: -1 };
             } catch (_) {
+                const fb = await fetchViaFallbackProxy(profileUrl);
+                if (fb) return fb;
                 return { status: "ratelimit", display: "Timeout", numeric: -1 };
             }
         }
@@ -1255,6 +1281,7 @@
         function togglePauseFetch() {
             isFetchPaused = !isFetchPaused;
             const btn = document.getElementById("pauseResumeBtn");
+            document.getElementById("skipWaitBtn").style.display = "none";
             if (isFetchPaused) {
                 currentPageBatchId++;
                 btn.innerHTML = '<i class="fa-solid fa-play"></i> Resume Fetch';
@@ -1285,8 +1312,10 @@
 
             isFetchPaused = false;
             const pauseBtn = document.getElementById("pauseResumeBtn");
+            const skipBtn = document.getElementById("skipWaitBtn");
             pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause Fetch';
             pauseBtn.style.display = "inline-flex";
+            skipBtn.style.display = "none";
 
             const batchId = ++currentPageBatchId;
             const status = document.getElementById("status");
@@ -1314,9 +1343,6 @@
                 updateSinglePointsCell(w);
             }
 
-            const concurrency = (bridgeMode === "tampermonkey" || bridgeMode === "proxy") ? 5 : 2;
-            const delayMs = (bridgeMode === "tampermonkey" || bridgeMode === "proxy") ? 120 : (hasJinaKey ? 350 : 750);
-
             let pass = 0;
             const maxPasses = 12;
 
@@ -1329,6 +1355,21 @@
                 });
 
                 if (roundQueue.length === 0) break;
+
+                // Immediately show active fetching status when resuming after cooldown
+                const doneAtRoundStart = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
+                status.className = "status ok";
+                status.textContent = pass === 0
+                    ? `>_ Page ${currentPage}: Fetching Helm Testnet Points (${doneAtRoundStart}/${wallets.length})...`
+                    : `>_ Page ${currentPage}: Resuming fetch (${doneAtRoundStart}/${wallets.length} loaded, ${roundQueue.length} remaining)...`;
+
+                // After first cooldown, switch to gentle 1-worker steady pacing so rate limits don't re-trigger
+                const concurrency = (bridgeMode === "tampermonkey" || bridgeMode === "proxy")
+                    ? 5
+                    : (pass === 0 ? 2 : 1);
+                const delayMs = (bridgeMode === "tampermonkey" || bridgeMode === "proxy")
+                    ? 120
+                    : (pass === 0 ? (hasJinaKey ? 450 : 750) : 900);
 
                 let idx = 0;
                 let consecutiveBlocks = 0;
@@ -1359,7 +1400,7 @@
                             pointsCache.set(wallet, { status: "ratelimit", display: "Cooldown", numeric: -1 });
                             updateSinglePointsCell(wallet);
                             consecutiveBlocks++;
-                            if (consecutiveBlocks >= 2) {
+                            if (consecutiveBlocks >= 4) {
                                 shouldCooldown = true;
                                 return;
                             }
@@ -1394,18 +1435,27 @@
                     break;
                 }
 
+                // Adaptive cooldown: 35s first time, 60s on subsequent passes so 1-min rate limit resets cleanly
+                const cooldownSeconds = pass === 1 ? 35 : 60;
                 const doneNow = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
-                for (let sec = 15; sec > 0; sec--) {
+                skipCooldownFlag = false;
+                skipBtn.style.display = "inline-flex";
+
+                for (let sec = cooldownSeconds; sec > 0; sec--) {
                     if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
+                    if (skipCooldownFlag) break;
                     status.className = "status";
-                    status.textContent = `>_ Page ${currentPage}: ${doneNow}/${wallets.length} loaded. Server cooldown: auto-continuing ${remaining} remaining in ${sec}s...`;
+                    status.textContent = `>_ Page ${currentPage}: ${doneNow}/${wallets.length} loaded. Rate-limit cooldown: auto-resuming ${remaining} remaining in ${sec}s...`;
                     await sleep(1000);
                 }
+
+                skipBtn.style.display = "none";
             }
 
             if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
 
             pauseBtn.style.display = "none";
+            skipBtn.style.display = "none";
             updatePageControlButtons();
 
             const okCount = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
@@ -1447,6 +1497,7 @@
             document.getElementById("csvBtn").disabled = true;
             document.getElementById("retryPageBtn").style.display = "none";
             document.getElementById("pauseResumeBtn").style.display = "none";
+            document.getElementById("skipWaitBtn").style.display = "none";
             status.className = "status";
             status.textContent = customRpc
                 ? ">_ Connecting to your custom RPC..."
