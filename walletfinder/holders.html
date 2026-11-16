@@ -384,13 +384,43 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 1rem;
+            gap: 0.85rem;
             margin-bottom: 1.1rem;
             flex-wrap: wrap;
         }
 
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
         .search-input {
-            max-width: 380px;
+            max-width: 340px;
+        }
+
+        .sort-pill {
+            font-family: var(--font-code);
+            font-size: 0.78rem;
+            padding: 0.35rem 0.7rem;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .sort-pill span {
+            color: var(--accent);
+            font-weight: 600;
         }
 
         .table-wrap {
@@ -415,6 +445,47 @@
             font-weight: 600;
             font-size: 0.8rem;
             text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            border-radius: 6px 6px 0 0;
+        }
+
+        th.sortable:hover {
+            background: var(--bg-secondary);
+        }
+
+        th.sortable.active-sort {
+            background: var(--bg-secondary);
+            box-shadow: inset 0 -2px 0 var(--accent);
+        }
+
+        .th-inner {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .sort-badge {
+            font-size: 0.68rem;
+            padding: 0.12rem 0.4rem;
+            border-radius: 4px;
+            background: var(--accent);
+            color: #000;
+            font-weight: 700;
+            text-transform: none;
+        }
+
+        [data-theme="light"] .sort-badge {
+            color: #fff;
+        }
+
+        .sort-icon-idle {
+            opacity: 0.45;
+            font-size: 0.78rem;
         }
 
         tr:hover td {
@@ -426,10 +497,104 @@
             font-size: 0.86rem;
         }
 
+        .points-link {
+            color: var(--success);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .points-link:hover {
+            text-decoration: underline;
+            color: var(--accent);
+        }
+
+        .points-muted {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .points-err {
+            color: var(--danger);
+            font-size: 0.8rem;
+        }
+
         .copy-mini {
             padding: 0.35rem 0.65rem;
             font-size: 0.78rem;
             border-radius: 6px;
+        }
+
+        /* ==================== PAGINATION ==================== */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.25rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .page-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            padding: 0.42rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: var(--font-code);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .page-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+        }
+
+        [data-theme="light"] .page-btn.active {
+            color: #fff;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .page-dots {
+            font-family: var(--font-code);
+            color: var(--text-secondary);
+            padding: 0 0.25rem;
+        }
+
+        .page-jump {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-family: var(--font-code);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .page-jump input {
+            width: 72px;
+            padding: 0.38rem 0.55rem;
+            font-size: 0.82rem;
+            text-align: center;
         }
 
         /* ==================== FOOTER ==================== */
@@ -480,7 +645,7 @@
         <div class="page-header">
             <div class="badge"><i class="fa-solid fa-radar"></i> WEB3 ON-CHAIN UTILITY</div>
             <h1 class="page-title">Solana Token <span>Holder Scanner</span></h1>
-            <p class="page-subtitle">Auto-detects Devnet / Mainnet &bull; SPL Token &amp; Token-2022 &bull; Pure Client-Side</p>
+            <p class="page-subtitle">Auto-detects Devnet / Mainnet &bull; SPL Token &amp; Token-2022 &bull; Helm Testnet Points</p>
         </div>
 
         <div class="card">
@@ -533,13 +698,21 @@
 
         <div id="resultsCard" class="card" style="display: none;">
             <div class="toolbar">
-                <input
-                    id="searchInput"
-                    class="search-input"
-                    placeholder="Filter by wallet address (prefix / suffix)..."
-                    oninput="renderTable()"
-                />
-                <span id="filterCount" class="mono" style="color: var(--text-secondary);"></span>
+                <div class="toolbar-left">
+                    <input
+                        id="searchInput"
+                        class="search-input"
+                        placeholder="Filter by wallet address (prefix / suffix)..."
+                        oninput="onSearchChange()"
+                    />
+                    <button id="retryPointsBtn" class="btn copy-mini" onclick="retryFailedPoints()" style="display: none;">
+                        <i class="fa-solid fa-rotate-right"></i> Retry Failed Points
+                    </button>
+                </div>
+                <div class="toolbar-right">
+                    <div id="sortIndicator" class="sort-pill">Sort: <span>Balance (Max &rarr; Min)</span></div>
+                    <span id="filterCount" class="mono" style="color: var(--text-secondary);"></span>
+                </div>
             </div>
 
             <div class="table-wrap">
@@ -547,14 +720,32 @@
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Owner Wallet Address</th>
-                            <th>Balance</th>
-                            <th>Share %</th>
+                            <th id="th-wallet" class="sortable" onclick="toggleSort('wallet')" title="Click to sort by Wallet Address">
+                                <span class="th-inner">Owner Wallet Address <span id="sort-icon-wallet"><i class="fa-solid fa-sort sort-icon-idle"></i></span></span>
+                            </th>
+                            <th id="th-balance" class="sortable active-sort" onclick="toggleSort('balance')" title="Click to toggle Max-Min / Min-Max">
+                                <span class="th-inner">Balance <span id="sort-icon-balance"><span class="sort-badge">Max &rarr; Min</span></span></span>
+                            </th>
+                            <th id="th-share" class="sortable" onclick="toggleSort('share')" title="Click to toggle Max-Min / Min-Max">
+                                <span class="th-inner">Share % <span id="sort-icon-share"><i class="fa-solid fa-sort sort-icon-idle"></i></span></span>
+                            </th>
+                            <th id="th-points" class="sortable" onclick="toggleSort('points')" title="Click to toggle Max-Min / Min-Max">
+                                <span class="th-inner">Testnet Points <span id="sort-icon-points"><i class="fa-solid fa-sort sort-icon-idle"></i></span></span>
+                            </th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="tbody"></tbody>
                 </table>
+            </div>
+
+            <div id="paginationBar" class="pagination" style="display: none;">
+                <div id="pageControls" class="page-controls"></div>
+                <div class="page-jump">
+                    <span id="pageInfoText">Page 1 of 1</span>
+                    <input id="pageJumpInput" type="number" min="1" placeholder="Page" onkeydown="if(event.key==='Enter') jumpToPage()" />
+                    <button class="page-btn" onclick="jumpToPage()">Go</button>
+                </div>
             </div>
         </div>
     </main>
@@ -635,16 +826,26 @@
         })();
     </script>
 
-    <!-- SOLANA HOLDER SCANNER LOGIC -->
+    <!-- SOLANA HOLDER SCANNER + HELM TESTNET POINTS + SORTING + PAGINATION -->
     <script>
         const DEFAULT_DEVNET_RPC = [
             "https://devnet.helius-rpc.com/?api-key=",
             "98e00548-e607-437e-8437-91ad083fa6c1"
         ].join("");
         const MAINNET_RPC = "https://api.mainnet-beta.solana.com";
+        const PAGE_SIZE = 100;
 
         let allHolders = [];
         let totalHeldSupply = 0;
+        let currentScanId = 0;
+
+        // Global sort & pagination state (operates on FULL dataset)
+        let sortField = "balance"; // 'balance' | 'share' | 'points' | 'wallet'
+        let sortOrder = "desc";    // 'desc' (Max -> Min) | 'asc' (Min -> Max)
+        let currentPage = 1;
+
+        // Cache: wallet -> { status: 'loading' | 'ok' | 'error', display: string, numeric: number }
+        const pointsCache = new Map();
 
         function toggleCustomRpc() {
             const box = document.getElementById("customRpcBox");
@@ -688,6 +889,146 @@
             throw new Error("Token Mint address Devnet ba Mainnet kothao pawa jayni!");
         }
 
+        // Parse "Testnet Points" from Helm Trading SSR HTML
+        function extractTestnetPoints(html) {
+            try {
+                const doc = new DOMParser().parseFromString(html, "text/html");
+                const divs = doc.querySelectorAll("div");
+                for (const div of divs) {
+                    if (div.children.length === 0 && div.textContent.trim() === "Testnet Points") {
+                        const wrapper = div.parentElement?.parentElement || div.parentElement;
+                        const span = wrapper?.querySelector("span");
+                        if (span && span.textContent.trim()) {
+                            return span.textContent.trim();
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            const match = html.match(/Testnet Points[\s\S]{0,250}?<span[^>]*>([\d,.\s]+)<\/span>/i);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
+            return "0";
+        }
+
+        // Fetch Helm Trading profile HTML with CORS fallbacks
+        async function fetchWalletTestnetPoints(wallet) {
+            const profileUrl = `https://helm.trading/profile/${wallet}`;
+            const endpoints = [
+                profileUrl,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(profileUrl)}`,
+                `https://corsproxy.io/?${encodeURIComponent(profileUrl)}`
+            ];
+
+            for (const url of endpoints) {
+                try {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 12000);
+                    const res = await fetch(url, { signal: controller.signal });
+                    clearTimeout(timer);
+
+                    if (res.status === 404) {
+                        return { status: "ok", display: "0", numeric: 0 };
+                    }
+                    if (!res.ok) continue;
+
+                    const html = await res.text();
+                    if (!html || html.length < 200) continue;
+
+                    const display = extractTestnetPoints(html);
+                    const numeric = Number(display.replace(/,/g, "")) || 0;
+                    return { status: "ok", display, numeric };
+                } catch (_) {
+                    // Try next fallback endpoint
+                }
+            }
+
+            return { status: "error", display: "Failed", numeric: -1 };
+        }
+
+        function formatPointsCell(wallet) {
+            const entry = pointsCache.get(wallet);
+            const profileUrl = `https://helm.trading/profile/${wallet}`;
+
+            if (!entry || entry.status === "loading") {
+                return `<span class="points-muted"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</span>`;
+            }
+            if (entry.status === "error") {
+                return `<a href="${profileUrl}" target="_blank" rel="noopener" class="points-err" title="Open Helm Profile">Retry / View</a>`;
+            }
+            return `<a href="${profileUrl}" target="_blank" rel="noopener" class="points-link" title="View on Helm Trading">${entry.display}</a>`;
+        }
+
+        function updateSinglePointsCell(wallet) {
+            const cell = document.getElementById(`pts-${wallet}`);
+            if (cell) {
+                cell.innerHTML = formatPointsCell(wallet);
+            }
+        }
+
+        // Background worker queue to fetch Testnet Points smoothly (4 concurrent)
+        async function loadAllTestnetPoints(wallets, scanId, forceRetry = false) {
+            const status = document.getElementById("status");
+            const retryBtn = document.getElementById("retryPointsBtn");
+            retryBtn.style.display = "none";
+
+            const queue = wallets.filter((w) => {
+                const cached = pointsCache.get(w);
+                if (!cached) return true;
+                if (forceRetry && cached.status === "error") return true;
+                return false;
+            });
+
+            for (const w of queue) {
+                pointsCache.set(w, { status: "loading", display: "...", numeric: -1 });
+                updateSinglePointsCell(w);
+            }
+
+            let completed = wallets.length - queue.length;
+            let index = 0;
+            const concurrency = 4;
+
+            async function worker() {
+                while (index < queue.length) {
+                    if (scanId !== currentScanId) return;
+                    const wallet = queue[index++];
+                    const result = await fetchWalletTestnetPoints(wallet);
+                    if (scanId !== currentScanId) return;
+
+                    pointsCache.set(wallet, result);
+                    updateSinglePointsCell(wallet);
+                    completed++;
+
+                    status.className = "status ok";
+                    status.textContent = `>_ Found ${wallets.length} holders. Fetching Testnet Points (${completed}/${wallets.length})...`;
+                }
+            }
+
+            await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, () => worker()));
+
+            if (scanId !== currentScanId) return;
+
+            const failedCount = wallets.filter((w) => pointsCache.get(w)?.status === "error").length;
+            if (failedCount > 0) {
+                retryBtn.style.display = "inline-flex";
+                status.className = "status ok";
+                status.textContent = `>_ Done! Loaded Testnet Points (${wallets.length - failedCount}/${wallets.length} succeeded, ${failedCount} failed).`;
+            } else {
+                status.className = "status ok";
+                status.textContent = `>_ Success! Loaded ${wallets.length} active holders & Helm Testnet Points.`;
+            }
+
+            if (sortField === "points") {
+                renderTable();
+            }
+        }
+
+        function retryFailedPoints() {
+            if (!allHolders.length) return;
+            loadAllTestnetPoints(allHolders.map((h) => h.wallet), currentScanId, true);
+        }
+
         async function scanHolders() {
             const mint = document.getElementById("mintInput").value.trim();
             const customRpc = document.getElementById("rpcInput").value.trim();
@@ -700,9 +1041,11 @@
                 return;
             }
 
+            const scanId = ++currentScanId;
             scanBtn.disabled = true;
             document.getElementById("copyAllBtn").disabled = true;
             document.getElementById("csvBtn").disabled = true;
+            document.getElementById("retryPointsBtn").style.display = "none";
             status.className = "status";
             status.textContent = customRpc
                 ? ">_ Connecting to your custom RPC..."
@@ -742,6 +1085,12 @@
 
                 totalHeldSupply = allHolders.reduce((sum, h) => sum + h.balance, 0);
 
+                // Reset to default sort & page 1 on new scan
+                sortField = "balance";
+                sortOrder = "desc";
+                currentPage = 1;
+                updateSortUI();
+
                 document.getElementById("statNetwork").textContent = network;
                 document.getElementById("statCount").textContent = allHolders.length.toLocaleString();
                 document.getElementById("statSupply").textContent = totalHeldSupply.toLocaleString(undefined, { maximumFractionDigits: 6 });
@@ -752,9 +1101,16 @@
                 document.getElementById("copyAllBtn").disabled = allHolders.length === 0;
                 document.getElementById("csvBtn").disabled = allHolders.length === 0;
 
-                status.className = "status ok";
-                status.textContent = `>_ Success! Found ${allHolders.length} active holders (${network}).`;
                 renderTable();
+
+                if (allHolders.length > 0) {
+                    status.className = "status ok";
+                    status.textContent = `>_ Found ${allHolders.length} active holders (${network}). Fetching Helm Testnet Points...`;
+                    loadAllTestnetPoints(allHolders.map((h) => h.wallet), scanId, false);
+                } else {
+                    status.className = "status ok";
+                    status.textContent = `>_ Success! Found 0 active holders (${network}).`;
+                }
             } catch (err) {
                 status.className = "status error";
                 status.textContent = ">_ Failed: " + err.message;
@@ -763,30 +1119,188 @@
             }
         }
 
+        // Toggle Max -> Min / Min -> Max when clicking a column header
+        function toggleSort(field) {
+            if (sortField === field) {
+                sortOrder = sortOrder === "desc" ? "asc" : "desc";
+            } else {
+                sortField = field;
+                sortOrder = "desc"; // First click starts with Max -> Min
+            }
+            currentPage = 1;
+            updateSortUI();
+            renderTable();
+        }
+
+        function updateSortUI() {
+            const fields = ["wallet", "balance", "share", "points"];
+            const labels = {
+                wallet: "Wallet",
+                balance: "Balance",
+                share: "Share %",
+                points: "Testnet Points"
+            };
+            const dirLabel = sortOrder === "desc" ? "Max &rarr; Min" : "Min &rarr; Max";
+
+            for (const f of fields) {
+                const th = document.getElementById(`th-${f}`);
+                const iconSlot = document.getElementById(`sort-icon-${f}`);
+                if (!th || !iconSlot) continue;
+
+                if (f === sortField) {
+                    th.classList.add("active-sort");
+                    iconSlot.innerHTML = `<span class="sort-badge">${dirLabel}</span>`;
+                } else {
+                    th.classList.remove("active-sort");
+                    iconSlot.innerHTML = `<i class="fa-solid fa-sort sort-icon-idle"></i>`;
+                }
+            }
+
+            const indicator = document.getElementById("sortIndicator");
+            if (indicator) {
+                indicator.innerHTML = `Sort: <span>${labels[sortField]} (${dirLabel})</span>`;
+            }
+        }
+
+        // Sorts the ENTIRE dataset across all pages
+        function getSortedHolders() {
+            const list = [...allHolders];
+            const mult = sortOrder === "desc" ? -1 : 1;
+
+            list.sort((a, b) => {
+                if (sortField === "balance" || sortField === "share") {
+                    return (a.balance - b.balance) * mult;
+                }
+                if (sortField === "points") {
+                    const entryA = pointsCache.get(a.wallet);
+                    const entryB = pointsCache.get(b.wallet);
+                    const validA = entryA && entryA.status === "ok";
+                    const validB = entryB && entryB.status === "ok";
+
+                    // Keep loading/failed entries at the bottom in both Max->Min and Min->Max
+                    if (validA && !validB) return -1;
+                    if (!validA && validB) return 1;
+                    if (!validA && !validB) return 0;
+
+                    return (entryA.numeric - entryB.numeric) * mult;
+                }
+                if (sortField === "wallet") {
+                    return a.wallet.localeCompare(b.wallet) * mult;
+                }
+                return 0;
+            });
+
+            return list;
+        }
+
+        function onSearchChange() {
+            currentPage = 1;
+            renderTable();
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderTable();
+            document.getElementById("resultsCard").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function jumpToPage() {
+            const input = document.getElementById("pageJumpInput");
+            const val = parseInt(input.value, 10);
+            if (!isNaN(val) && val >= 1) {
+                goToPage(val);
+            }
+        }
+
+        function renderPagination(totalItems, totalPages) {
+            const bar = document.getElementById("paginationBar");
+            const controls = document.getElementById("pageControls");
+            const infoText = document.getElementById("pageInfoText");
+            const jumpInput = document.getElementById("pageJumpInput");
+
+            if (totalItems === 0) {
+                bar.style.display = "none";
+                return;
+            }
+
+            bar.style.display = "flex";
+            infoText.textContent = `Page ${currentPage} of ${totalPages}`;
+            jumpInput.max = totalPages;
+            jumpInput.value = "";
+
+            const pages = [];
+            if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                if (currentPage > 3) pages.push("...");
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (currentPage < totalPages - 2) pages.push("...");
+                pages.push(totalPages);
+            }
+
+            let html = `
+                <button class="page-btn" onclick="goToPage(1)" ${currentPage === 1 ? "disabled" : ""}>&laquo; First</button>
+                <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? "disabled" : ""}>&lsaquo; Prev</button>
+            `;
+
+            for (const p of pages) {
+                if (p === "...") {
+                    html += `<span class="page-dots">...</span>`;
+                } else {
+                    html += `<button class="page-btn ${p === currentPage ? "active" : ""}" onclick="goToPage(${p})">${p}</button>`;
+                }
+            }
+
+            html += `
+                <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? "disabled" : ""}>Next &rsaquo;</button>
+                <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? "disabled" : ""}>Last &raquo;</button>
+            `;
+
+            controls.innerHTML = html;
+        }
+
         function renderTable() {
             const q = document.getElementById("searchInput").value.trim().toLowerCase();
+            const sorted = getSortedHolders();
             const filtered = q
-                ? allHolders.filter((h) => h.wallet.toLowerCase().includes(q))
-                : allHolders;
+                ? sorted.filter((h) => h.wallet.toLowerCase().includes(q))
+                : sorted;
 
-            document.getElementById("filterCount").textContent =
-                `Showing ${filtered.length} of ${allHolders.length} holders`;
+            const totalItems = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIdx = (currentPage - 1) * PAGE_SIZE;
+            const endIdx = Math.min(startIdx + PAGE_SIZE, totalItems);
+            const pageSlice = filtered.slice(startIdx, endIdx);
+
+            document.getElementById("filterCount").textContent = totalItems > 0
+                ? `Showing ${startIdx + 1}–${endIdx} of ${totalItems} holders`
+                : `Showing 0 of ${allHolders.length} holders`;
 
             const tbody = document.getElementById("tbody");
-            tbody.innerHTML = filtered
+            tbody.innerHTML = pageSlice
                 .map((h, idx) => {
+                    const globalRank = startIdx + idx + 1;
                     const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(2) : "0.00";
                     return `
                         <tr>
-                            <td class="mono">${idx + 1}</td>
+                            <td class="mono">${globalRank}</td>
                             <td class="mono">${h.wallet}</td>
                             <td class="mono">${h.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
                             <td class="mono">${share}%</td>
+                            <td id="pts-${h.wallet}" class="mono">${formatPointsCell(h.wallet)}</td>
                             <td><button class="btn copy-mini" onclick="copyOne('${h.wallet}', this)"><i class="fa-regular fa-copy"></i> Copy</button></td>
                         </tr>
                     `;
                 })
                 .join("");
+
+            renderPagination(totalItems, totalPages);
         }
 
         function copyOne(wallet, btn) {
@@ -798,7 +1312,7 @@
 
         function copyAllWallets() {
             if (!allHolders.length) return;
-            navigator.clipboard.writeText(allHolders.map((h) => h.wallet).join("\n"));
+            navigator.clipboard.writeText(getSortedHolders().map((h) => h.wallet).join("\n"));
             const status = document.getElementById("status");
             status.className = "status ok";
             status.textContent = `>_ Copied ${allHolders.length} wallet addresses to clipboard!`;
@@ -807,10 +1321,11 @@
         function downloadCSV() {
             if (!allHolders.length) return;
             const rows = [
-                "Rank,Wallet Address,Balance,Share (%)",
-                ...allHolders.map((h, i) => {
+                "Rank,Wallet Address,Balance,Share (%),Testnet Points",
+                ...getSortedHolders().map((h, i) => {
                     const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(4) : "0";
-                    return `${i + 1},${h.wallet},${h.balance},${share}%`;
+                    const pts = pointsCache.get(h.wallet)?.display ?? "0";
+                    return `${i + 1},${h.wallet},${h.balance},${share}%,"${pts}"`;
                 })
             ];
             const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
