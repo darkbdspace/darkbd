@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solana Token Holder Scanner</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px 16px;
+      line-height: 1.5;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 6px; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #090d16;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    button {
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #1f2937;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    button:hover:not(:disabled) { background: #374151; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      margin-top: 12px;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    .status.error { color: var(--danger); }
+    .status.ok { color: var(--success); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 680px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    .stat-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
+    .stat-val { font-size: 1.05rem; font-weight: 700; margin-top: 4px; word-break: break-all; }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .search-input { max-width: 340px; font-family: inherit; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td {
+      text-align: left;
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .copy-mini {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Solana Token Holder Scanner</h1>
+    <p class="subtitle">Auto-detects Devnet / Mainnet &bull; SPL Token &amp; Token-2022 &bull; Pure Static Client-Side</p>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label for="mintInput">Token Mint Address</label>
+          <input id="mintInput" value="4wMp7FQJrSwHXJ92kKRd9X2LQE1Tw7L4beT7fBLgjY4y" />
+        </div>
+        <div>
+          <label for="rpcInput">Devnet RPC URL (Helius)</label>
+          <input id="rpcInput" value="https://devnet.helius-rpc.com/?api-key=98e00548-e607-437e-8437-91ad083fa6c1" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="scanBtn" class="primary" onclick="scanHolders()">Scan All Holders</button>
+        <button id="copyAllBtn" onclick="copyAllWallets()" disabled>Copy All Wallets</button>
+        <button id="csvBtn" onclick="downloadCSV()" disabled>Download CSV (Excel)</button>
+      </div>
+      <div id="status" class="status">Ready. Click "Scan All Holders" to fetch live on-chain data.</div>
+    </div>
+
+    <div id="statsSection" class="stats" style="display: none;">
+      <div class="stat-box">
+        <div class="stat-label">Network</div>
+        <div id="statNetwork" class="stat-val">-</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Active Holders</div>
+        <div id="statCount" class="stat-val">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Total Active Balance</div>
+        <div id="statSupply" class="stat-val">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Decimals</div>
+        <div id="statDecimals" class="stat-val">-</div>
+      </div>
+    </div>
+
+    <div id="resultsCard" class="card" style="display: none;">
+      <div class="toolbar">
+        <input
+          id="searchInput"
+          class="search-input"
+          placeholder="Filter by wallet address (prefix / suffix)..."
+          oninput="renderTable()"
+        />
+        <span id="filterCount" class="subtitle" style="margin: 0;"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Owner Wallet Address</th>
+              <th>Balance</th>
+              <th>Share %</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MAINNET_RPC = "https://api.mainnet-beta.solana.com";
+    let allHolders = [];
+    let totalHeldSupply = 0;
+
+    async function rpcCall(rpcUrl, method, params) {
+      const res = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      const data = await res.json();
+      if (data.error) throw new Error(`RPC Error: ${data.error.message}`);
+      return data.result;
+    }
+
+    async function detectNetworkAndMint(mint, devnetRpc) {
+      const devInfo = await rpcCall(devnetRpc, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
+      if (devInfo?.value) {
+        return { network: "Devnet", rpc: devnetRpc, account: devInfo.value };
+      }
+      const mainInfo = await rpcCall(MAINNET_RPC, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
+      if (mainInfo?.value) {
+        return { network: "Mainnet", rpc: MAINNET_RPC, account: mainInfo.value };
+      }
+      throw new Error("Token Mint address Devnet ba Mainnet kothao pawa jayni!");
+    }
+
+    async function scanHolders() {
+      const mint = document.getElementById("mintInput").value.trim();
+      const devnetRpc = document.getElementById("rpcInput").value.trim();
+      const status = document.getElementById("status");
+      const scanBtn = document.getElementById("scanBtn");
+
+      if (!mint || !devnetRpc) {
+        status.className = "status error";
+        status.textContent = "Mint address ebong RPC URL duitai dite hobe.";
+        return;
+      }
+
+      scanBtn.disabled = true;
+      document.getElementById("copyAllBtn").disabled = true;
+      document.getElementById("csvBtn").disabled = true;
+      status.className = "status";
+      status.textContent = "Detecting network & checking mint info...";
+
+      try {
+        const { network, rpc, account } = await detectNetworkAndMint(mint, devnetRpc);
+        const programId = account.owner;
+        const parsedMint = account.data?.parsed?.info;
+        const decimals = parsedMint?.decimals ?? "-";
+
+        status.textContent = `Detected ${network}. Fetching all holder accounts...`;
+
+        const filters = [{ memcmp: { offset: 0, bytes: mint } }];
+        if (programId === "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") {
+          filters.unshift({ dataSize: 165 });
+        }
+
+        const accounts = await rpcCall(rpc, "getProgramAccounts", [
+          programId,
+          { encoding: "jsonParsed", filters }
+        ]);
+
+        const holdersMap = new Map();
+        for (const item of accounts) {
+          const info = item.account?.data?.parsed?.info;
+          if (!info) continue;
+          const amount = Number(info.tokenAmount?.uiAmountString ?? 0);
+          if (amount <= 0) continue;
+          const owner = info.owner;
+          holdersMap.set(owner, (holdersMap.get(owner) || 0) + amount);
+        }
+
+        allHolders = [...holdersMap.entries()]
+          .map(([wallet, balance]) => ({ wallet, balance }))
+          .sort((a, b) => b.balance - a.balance);
+
+        totalHeldSupply = allHolders.reduce((sum, h) => sum + h.balance, 0);
+
+        document.getElementById("statNetwork").textContent = network;
+        document.getElementById("statCount").textContent = allHolders.length.toLocaleString();
+        document.getElementById("statSupply").textContent = totalHeldSupply.toLocaleString(undefined, { maximumFractionDigits: 6 });
+        document.getElementById("statDecimals").textContent = decimals;
+
+        document.getElementById("statsSection").style.display = "grid";
+        document.getElementById("resultsCard").style.display = "block";
+        document.getElementById("copyAllBtn").disabled = allHolders.length === 0;
+        document.getElementById("csvBtn").disabled = allHolders.length === 0;
+
+        status.className = "status ok";
+        status.textContent = `Success! Found ${allHolders.length} active holders on ${network}.`;
+        renderTable();
+      } catch (err) {
+        status.className = "status error";
+        status.textContent = "Failed: " + err.message;
+      } finally {
+        scanBtn.disabled = false;
+      }
+    }
+
+    function renderTable() {
+      const q = document.getElementById("searchInput").value.trim().toLowerCase();
+      const filtered = q
+        ? allHolders.filter((h) => h.wallet.toLowerCase().includes(q))
+        : allHolders;
+
+      document.getElementById("filterCount").textContent =
+        `Showing ${filtered.length} of ${allHolders.length} holders`;
+
+      const tbody = document.getElementById("tbody");
+      tbody.innerHTML = filtered
+        .map((h, idx) => {
+          const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(2) : "0.00";
+          return `
+            <tr>
+              <td>${idx + 1}</td>
+              <td class="mono">${h.wallet}</td>
+              <td>${h.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
+              <td>${share}%</td>
+              <td><button class="copy-mini" onclick="copyOne('${h.wallet}', this)">Copy</button></td>
+            </tr>
+          `;
+        })
+        .join("");
+    }
+
+    function copyOne(wallet, btn) {
+      navigator.clipboard.writeText(wallet);
+      const old = btn.textContent;
+      btn.textContent = "Copied!";
+      setTimeout(() => (btn.textContent = old), 1200);
+    }
+
+    function copyAllWallets() {
+      if (!allHolders.length) return;
+      navigator.clipboard.writeText(allHolders.map((h) => h.wallet).join("\n"));
+      const status = document.getElementById("status");
+      status.className = "status ok";
+      status.textContent = `Copied ${allHolders.length} wallet addresses to clipboard!`;
+    }
+
+    function downloadCSV() {
+      if (!allHolders.length) return;
+      const rows = [
+        "Rank,Wallet Address,Balance,Share (%)",
+        ...allHolders.map((h, i) => {
+          const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(4) : "0";
+          return `${i + 1},${h.wallet},${h.balance},${share}%`;
+        })
+      ];
+      const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `holders_${document.getElementById("mintInput").value.trim().slice(0, 8)}.csv`;
+      a.click();
+    }
+  </script>
+</body>
+</html>
