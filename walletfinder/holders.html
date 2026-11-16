@@ -236,7 +236,7 @@
             font-weight: 600;
         }
 
-        input {
+        input, textarea {
             width: 100%;
             padding: 0.8rem 1rem;
             border-radius: 8px;
@@ -247,7 +247,7 @@
             font-family: var(--font-code);
         }
 
-        input:focus {
+        input:focus, textarea:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 12px var(--accent-glow);
@@ -631,6 +631,57 @@
             text-align: center;
         }
 
+        /* ==================== CONSOLE SYNC MODAL ==================== */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.72);
+            backdrop-filter: blur(6px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+        }
+
+        .modal-card {
+            background: var(--bg-card);
+            border: 1px solid var(--accent);
+            border-radius: 14px;
+            max-width: 640px;
+            width: 100%;
+            padding: 1.6rem;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.85rem;
+        }
+
+        .modal-title {
+            font-family: var(--font-head);
+            font-size: 1.15rem;
+            color: var(--accent);
+        }
+
+        .modal-steps {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.9rem;
+            padding-left: 1.2rem;
+        }
+
+        .modal-steps li {
+            margin-bottom: 0.35rem;
+        }
+
         /* ==================== FOOTER ==================== */
         footer {
             text-align: center;
@@ -761,6 +812,9 @@
                     <button id="retryPageBtn" class="btn copy-mini" onclick="retryCurrentPagePoints()" style="display: none;">
                         <i class="fa-solid fa-rotate-right"></i> Retry Remaining
                     </button>
+                    <button id="consoleSyncBtn" class="btn copy-mini" onclick="openConsoleSyncModal()" title="Fetch all points in 5s directly via helm.trading browser tab">
+                        <i class="fa-solid fa-terminal"></i> Fast Console Sync
+                    </button>
                     <button id="clearCacheBtn" class="btn copy-mini btn-ghost" onclick="clearPointsCache()" title="Clear saved points cache">
                         <i class="fa-solid fa-trash-can"></i> Clear Cache
                     </button>
@@ -805,6 +859,34 @@
             </div>
         </div>
     </main>
+
+    <!-- FAST CONSOLE SYNC MODAL (100% UNBLOCKABLE DIRECT HELM TAB HELPER) -->
+    <div id="consoleModal" class="modal-backdrop" onclick="if(event.target===this) closeConsoleSyncModal()">
+        <div class="modal-card">
+            <div class="modal-head">
+                <div class="modal-title"><i class="fa-solid fa-bolt"></i> Fast Console Sync (5 Seconds)</div>
+                <button class="btn copy-mini btn-ghost" onclick="closeConsoleSyncModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <ol class="modal-steps">
+                <li>Click <b>Copy Console Script</b> below (includes all remaining unloaded wallets).</li>
+                <li>Open <a href="https://helm.trading" target="_blank" rel="noopener" style="color:var(--accent)">helm.trading</a> in a browser tab, press <b>F12 &rarr; Console</b>, paste &amp; press <b>Enter</b>.</li>
+                <li>It fetches all points directly using your browser (zero rate limits) and copies the result automatically. Paste it below:</li>
+            </ol>
+            <div class="actions" style="margin-bottom: 0.85rem;">
+                <button id="copyConsoleScriptBtn" class="btn btn-primary copy-mini" onclick="copyHelmConsoleScript()">
+                    <i class="fa-regular fa-copy"></i> Copy Console Script
+                </button>
+                <span id="consoleTargetCount" class="mono" style="font-size:0.8rem; color:var(--text-secondary);"></span>
+            </div>
+            <textarea id="consoleImportInput" rows="4" placeholder='Paste copied JSON result here (e.g. {"wallet":"12,450",...})...'></textarea>
+            <div class="actions" style="margin-top: 0.85rem; justify-content: flex-end;">
+                <button class="btn copy-mini btn-ghost" onclick="closeConsoleSyncModal()">Cancel</button>
+                <button class="btn btn-primary copy-mini" onclick="importConsolePoints()">
+                    <i class="fa-solid fa-file-import"></i> Import Points
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- FOOTER -->
     <footer>
@@ -882,7 +964,7 @@
         })();
     </script>
 
-    <!-- SOLANA HOLDER SCANNER + ADAPTIVE COOLDOWN + HELM TESTNET POINTS -->
+    <!-- SOLANA HOLDER SCANNER + SUPABASE AUTO-DISCOVERY + MULTI-PROXY ROTATION -->
     <script>
         const DEFAULT_DEVNET_RPC = [
             "https://devnet.helius-rpc.com/?api-key=",
@@ -898,6 +980,7 @@
 
         const PAGE_SIZE = 100;
         const CACHE_STORAGE_KEY = "helm_points_cache_v1";
+        const SUPABASE_CFG_KEY = "helm_supabase_cfg_v1";
 
         let allHolders = [];
         let totalHeldSupply = 0;
@@ -942,18 +1025,19 @@
                     }
                     localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(obj));
                 } catch (_) {}
-            }, 800);
+            }, 600);
         }
 
         function clearPointsCache() {
             pointsCache.clear();
             localStorage.removeItem(CACHE_STORAGE_KEY);
+            localStorage.removeItem(SUPABASE_CFG_KEY);
+            supabaseSyncedAll = false;
             if (currentVisibleSlice.length > 0) {
                 renderTable(true);
             }
         }
 
-        // Load custom override Jina API key if user entered one
         const savedJinaKey = localStorage.getItem("dark_jina_api_key");
         if (savedJinaKey) {
             document.getElementById("jinaKeyInput").value = savedJinaKey;
@@ -1060,6 +1144,164 @@
             return null;
         }
 
+        // ==================== LAYER 1: DIRECT SUPABASE BATCH SYNC ====================
+        let supabaseSyncedAll = false;
+        let supabaseDiscoveryAttempted = false;
+
+        async function fetchTextQuick(targetUrl) {
+            const tries = [
+                async () => {
+                    const c = new AbortController();
+                    const t = setTimeout(() => c.abort(), 7000);
+                    const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`, { signal: c.signal });
+                    clearTimeout(t);
+                    return r.ok ? await r.text() : null;
+                },
+                async () => {
+                    const c = new AbortController();
+                    const t = setTimeout(() => c.abort(), 7000);
+                    const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`, { signal: c.signal });
+                    clearTimeout(t);
+                    return r.ok ? await r.text() : null;
+                },
+                async () => {
+                    const jinaKey = getActiveJinaKey();
+                    const headers = { "Accept": "text/plain", "X-Return-Format": "html" };
+                    if (jinaKey) headers["Authorization"] = `Bearer ${jinaKey}`;
+                    const c = new AbortController();
+                    const t = setTimeout(() => c.abort(), 9000);
+                    const r = await fetch(`https://r.jina.ai/${targetUrl}`, { headers, signal: c.signal });
+                    clearTimeout(t);
+                    return r.ok ? await r.text() : null;
+                }
+            ];
+
+            for (const fn of tries) {
+                try {
+                    const txt = await fn();
+                    if (txt && txt.length > 200) return txt;
+                } catch (_) {}
+            }
+            return null;
+        }
+
+        async function trySyncViaHelmSupabase(wallets) {
+            if (supabaseSyncedAll) return true;
+
+            let cfg = null;
+            try {
+                const saved = localStorage.getItem(SUPABASE_CFG_KEY);
+                if (saved) cfg = JSON.parse(saved);
+            } catch (_) {}
+
+            if (!cfg && !supabaseDiscoveryAttempted) {
+                supabaseDiscoveryAttempted = true;
+                const html = await fetchTextQuick("https://helm.trading/leaderboard") || await fetchTextQuick("https://helm.trading");
+                if (html) {
+                    const urlMatch = html.match(/https:\/\/[a-z0-9-]{10,40}\.supabase\.co/i);
+                    const keyMatch = html.match(/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/);
+                    if (urlMatch && keyMatch) {
+                        cfg = { url: urlMatch[0], key: keyMatch[0] };
+                    } else {
+                        // Scan up to 4 Next.js client chunks for NEXT_PUBLIC_SUPABASE_URL & ANON_KEY
+                        const chunkMatches = [...html.matchAll(/\/_next\/static\/chunks\/[^"'\\\s]+\.js/g)]
+                            .map((m) => `https://helm.trading${m[0]}`)
+                            .filter((u, i, arr) => arr.indexOf(u) === i)
+                            .slice(0, 5);
+
+                        for (const chunkUrl of chunkMatches) {
+                            const js = await fetchTextQuick(chunkUrl);
+                            if (!js) continue;
+                            const uM = js.match(/https:\/\/[a-z0-9-]{10,40}\.supabase\.co/i);
+                            const kM = js.match(/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/);
+                            if (uM && kM) {
+                                cfg = { url: uM[0], key: kM[0] };
+                                break;
+                            }
+                        }
+                    }
+                    if (cfg) {
+                        try { localStorage.setItem(SUPABASE_CFG_KEY, JSON.stringify(cfg)); } catch (_) {}
+                    }
+                }
+            }
+
+            if (!cfg?.url || !cfg?.key) return false;
+
+            try {
+                // Query Supabase profiles directly from browser (CORS enabled by default)
+                let offset = 0;
+                const batchLimit = 1000;
+                let totalParsed = 0;
+
+                while (offset < 10000) {
+                    const res = await fetch(`${cfg.url}/rest/v1/profiles?select=*&limit=${batchLimit}&offset=${offset}`, {
+                        headers: {
+                            "apikey": cfg.key,
+                            "Authorization": `Bearer ${cfg.key}`,
+                            "Accept": "application/json"
+                        }
+                    });
+                    if (!res.ok) return false;
+                    const rows = await res.json();
+                    if (!Array.isArray(rows) || rows.length === 0) break;
+
+                    for (const row of rows) {
+                        if (!row || typeof row !== "object") continue;
+                        let walletVal = null;
+                        let pointsVal = null;
+
+                        for (const [k, v] of Object.entries(row)) {
+                            if (typeof v === "string" && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v)) {
+                                walletVal = v;
+                            }
+                            if (typeof v === "number" && /point/i.test(k)) {
+                                pointsVal = v;
+                            }
+                        }
+
+                        if (walletVal) {
+                            const num = Number(pointsVal) || 0;
+                            pointsCache.set(walletVal, {
+                                status: "ok",
+                                display: num.toLocaleString(),
+                                numeric: num
+                            });
+                            totalParsed++;
+                        }
+                    }
+
+                    if (rows.length < batchLimit) break;
+                    offset += batchLimit;
+                }
+
+                if (totalParsed > 0) {
+                    // Mark any holder not present in Supabase profiles table as 0 points
+                    for (const h of allHolders) {
+                        if (!pointsCache.has(h.wallet)) {
+                            pointsCache.set(h.wallet, { status: "ok", display: "0", numeric: 0 });
+                        }
+                    }
+                    supabaseSyncedAll = true;
+                    schedulePersistCache();
+                    for (const w of wallets) updateSinglePointsCell(w);
+                    return true;
+                }
+            } catch (_) {}
+
+            return false;
+        }
+
+        // ==================== LAYER 2: PER-PROXY ROTATING POOL ====================
+        const proxyPoolState = {
+            jina: { cooldownUntil: 0, rr: 0 },
+            codetabs: { cooldownUntil: 0 },
+            corsproxy: { cooldownUntil: 0 },
+            allorigins: { cooldownUntil: 0 },
+            thingproxy: { cooldownUntil: 0 }
+        };
+        let poolCursor = 0;
+
         async function detectActiveBridge() {
             if (typeof window.__HELM_GM_FETCH__ === "function") {
                 return "tampermonkey";
@@ -1079,53 +1321,148 @@
                     }
                 }
             }
-            return "jina";
+            return "pool";
         }
 
-        // Fast parallel fallback across secondary CORS proxies
-        function fetchViaFallbackProxy(profileUrl) {
-            const providers = [
-                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, json: false },
-                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`, json: true }
-            ];
+        function parseHelmResponseText(text) {
+            if (!text) return null;
+            if (text.includes("Just a moment...") || text.includes("Attention Required! | Cloudflare")) {
+                return "blocked";
+            }
+            const pts = extractTestnetPoints(text);
+            if (pts !== null) {
+                return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
+            }
+            if (
+                text.includes("Star Trader") ||
+                text.includes("No bio") ||
+                text.includes("PnL Curve") ||
+                (text.includes("_next") && text.includes("Helm"))
+            ) {
+                return { status: "ok", display: "0", numeric: 0 };
+            }
+            return null;
+        }
 
-            return new Promise((resolve) => {
-                let settled = false;
-                let pending = providers.length;
+        async function fetchFromNamedProvider(providerName, profileUrl) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 11000);
 
-                providers.forEach(async (fb) => {
-                    try {
-                        const controller = new AbortController();
-                        const timer = setTimeout(() => controller.abort(), 7000);
-                        const res = await fetch(fb.url, { signal: controller.signal });
-                        clearTimeout(timer);
-                        if (!res.ok) throw new Error("not ok");
+            try {
+                if (providerName === "jina") {
+                    const jinaKey = getActiveJinaKey();
+                    const headers = {
+                        "Accept": "text/plain",
+                        "X-Return-Format": "markdown",
+                        "X-With-Generated-Alt": "false"
+                    };
+                    if (jinaKey) headers["Authorization"] = `Bearer ${jinaKey}`;
 
-                        const html = fb.json ? (await res.json())?.contents : await res.text();
-                        if (!html) throw new Error("empty");
-
-                        const pts = extractTestnetPoints(html);
-                        if (pts !== null && !settled) {
-                            settled = true;
-                            resolve({ status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 });
-                            return;
-                        }
-                        if (html.includes("_next") && (html.includes("Helm") || html.includes("Star Trader")) && !settled) {
-                            settled = true;
-                            resolve({ status: "ok", display: "0", numeric: 0 });
-                            return;
-                        }
-                    } catch (_) {}
-
-                    pending--;
-                    if (pending === 0 && !settled) {
-                        resolve(null);
+                    const res = await fetch(`https://r.jina.ai/${profileUrl}`, { headers, signal: controller.signal });
+                    clearTimeout(timer);
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                    if (res.status === 429 || res.status === 403 || res.status === 422) {
+                        proxyPoolState.jina.cooldownUntil = Date.now() + 65000;
+                        return null;
                     }
-                });
-            });
+                    if (res.ok) {
+                        const parsed = parseHelmResponseText(await res.text());
+                        if (parsed === "blocked") {
+                            proxyPoolState.jina.cooldownUntil = Date.now() + 65000;
+                            return null;
+                        }
+                        if (parsed) return parsed;
+                    }
+                    proxyPoolState.jina.cooldownUntil = Date.now() + 30000;
+                    return null;
+                }
+
+                if (providerName === "codetabs") {
+                    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, { signal: controller.signal });
+                    clearTimeout(timer);
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                    if (res.status === 429 || res.status === 403) {
+                        proxyPoolState.codetabs.cooldownUntil = Date.now() + 65000;
+                        return null;
+                    }
+                    if (res.ok) {
+                        const parsed = parseHelmResponseText(await res.text());
+                        if (parsed && parsed !== "blocked") return parsed;
+                    }
+                    proxyPoolState.codetabs.cooldownUntil = Date.now() + 35000;
+                    return null;
+                }
+
+                if (providerName === "corsproxy") {
+                    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(profileUrl)}`, { signal: controller.signal });
+                    clearTimeout(timer);
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                    if (res.status === 429 || res.status === 403) {
+                        proxyPoolState.corsproxy.cooldownUntil = Date.now() + 65000;
+                        return null;
+                    }
+                    if (res.ok) {
+                        const parsed = parseHelmResponseText(await res.text());
+                        if (parsed && parsed !== "blocked") return parsed;
+                    }
+                    proxyPoolState.corsproxy.cooldownUntil = Date.now() + 35000;
+                    return null;
+                }
+
+                if (providerName === "allorigins") {
+                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`, { signal: controller.signal });
+                    clearTimeout(timer);
+                    if (!res.ok) {
+                        proxyPoolState.allorigins.cooldownUntil = Date.now() + 45000;
+                        return null;
+                    }
+                    const json = await res.json();
+                    const parsed = parseHelmResponseText(json?.contents || "");
+                    if (parsed && parsed !== "blocked") return parsed;
+                    proxyPoolState.allorigins.cooldownUntil = Date.now() + 45000;
+                    return null;
+                }
+
+                if (providerName === "thingproxy") {
+                    const res = await fetch(`https://thingproxy.freeboard.io/fetch/${profileUrl}`, { signal: controller.signal });
+                    clearTimeout(timer);
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                    if (res.ok) {
+                        const parsed = parseHelmResponseText(await res.text());
+                        if (parsed && parsed !== "blocked") return parsed;
+                    }
+                    proxyPoolState.thingproxy.cooldownUntil = Date.now() + 45000;
+                    return null;
+                }
+            } catch (_) {
+                clearTimeout(timer);
+                if (proxyPoolState[providerName]) {
+                    proxyPoolState[providerName].cooldownUntil = Date.now() + 25000;
+                }
+            }
+            return null;
         }
 
-        // Fetch single wallet points; any temporary block returns 'ratelimit' so auto-cooldown retries it
+        function getAvailableProviders() {
+            const now = Date.now();
+            const names = Object.keys(proxyPoolState);
+            const ready = names.filter((n) => proxyPoolState[n].cooldownUntil <= now);
+            if (ready.length === 0) return [];
+            // Rotate order so traffic spreads evenly across all healthy IPs
+            const start = poolCursor++ % ready.length;
+            return [...ready.slice(start), ...ready.slice(0, start)];
+        }
+
+        function getEarliestProviderReadyMs() {
+            const now = Date.now();
+            let minWait = 60000;
+            for (const st of Object.values(proxyPoolState)) {
+                const rem = st.cooldownUntil - now;
+                if (rem < minWait) minWait = rem;
+            }
+            return Math.max(1000, minWait);
+        }
+
         async function fetchWalletTestnetPoints(wallet, bridgeMode) {
             const profileUrl = `https://helm.trading/profile/${wallet}`;
 
@@ -1135,13 +1472,8 @@
                     const res = await window.__HELM_GM_FETCH__(profileUrl);
                     if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
                     if (res.status === 200 && res.text) {
-                        const pts = extractTestnetPoints(res.text);
-                        if (pts !== null) {
-                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
-                        }
-                        if (res.text.includes("_next")) {
-                            return { status: "ok", display: "0", numeric: 0 };
-                        }
+                        const parsed = parseHelmResponseText(res.text);
+                        if (parsed && parsed !== "blocked") return parsed;
                     }
                     return { status: "ratelimit", display: String(res.status), numeric: -1 };
                 } catch (_) {
@@ -1164,14 +1496,8 @@
 
                     if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
                     if (res.ok) {
-                        const html = await res.text();
-                        const pts = extractTestnetPoints(html);
-                        if (pts !== null) {
-                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
-                        }
-                        if (html.includes("_next")) {
-                            return { status: "ok", display: "0", numeric: 0 };
-                        }
+                        const parsed = parseHelmResponseText(await res.text());
+                        if (parsed && parsed !== "blocked") return parsed;
                     }
                     return { status: "ratelimit", display: String(res.status), numeric: -1 };
                 } catch (_) {
@@ -1179,53 +1505,14 @@
                 }
             }
 
-            // Mode 3: Jina Reader (uses built-in DEFAULT_JINA_API_KEY or custom override)
-            try {
-                const jinaKey = getActiveJinaKey();
-                const headers = {
-                    "Accept": "text/plain",
-                    "X-Return-Format": "markdown",
-                    "X-With-Generated-Alt": "false"
-                };
-                if (jinaKey) {
-                    headers["Authorization"] = `Bearer ${jinaKey}`;
-                }
-
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 14000);
-                const res = await fetch(`https://r.jina.ai/${profileUrl}`, {
-                    headers,
-                    signal: controller.signal
-                });
-                clearTimeout(timer);
-
-                if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
-
-                if (res.ok) {
-                    const text = await res.text();
-                    if (text.includes("Just a moment...") || text.includes("Attention Required! | Cloudflare")) {
-                        const fb = await fetchViaFallbackProxy(profileUrl);
-                        return fb || { status: "ratelimit", display: "CF", numeric: -1 };
-                    }
-
-                    const pts = extractTestnetPoints(text);
-                    if (pts !== null) {
-                        return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
-                    }
-                    if (text.includes("Star Trader") || text.includes("No bio") || text.includes("PnL Curve")) {
-                        return { status: "ok", display: "0", numeric: 0 };
-                    }
-                }
-
-                const fb = await fetchViaFallbackProxy(profileUrl);
-                if (fb) return fb;
-
-                return { status: "ratelimit", display: String(res.status), numeric: -1 };
-            } catch (_) {
-                const fb = await fetchViaFallbackProxy(profileUrl);
-                if (fb) return fb;
-                return { status: "ratelimit", display: "Timeout", numeric: -1 };
+            // Mode 3: Multi-Proxy Pool (tries every currently unblocked proxy before entering cooldown)
+            const providers = getAvailableProviders();
+            for (const pName of providers) {
+                const result = await fetchFromNamedProvider(pName, profileUrl);
+                if (result) return result;
             }
+
+            return { status: "ratelimit", display: "Cooldown", numeric: -1 };
         }
 
         function formatPointsCell(wallet) {
@@ -1264,6 +1551,9 @@
         }
 
         async function retrySingleWallet(wallet) {
+            // Reset proxy cooldowns on manual retry
+            for (const st of Object.values(proxyPoolState)) st.cooldownUntil = 0;
+
             const bridgeMode = await detectActiveBridge();
             pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
             updateSinglePointsCell(wallet);
@@ -1306,7 +1596,7 @@
             retryBtn.style.display = hasFailedOnPage ? "inline-flex" : "none";
         }
 
-        // Auto-cooldown & auto-retry loop until ALL 100/100 on the page finish
+        // Main orchestrator: tries Supabase fast batch first, then Multi-Proxy rotation with per-proxy cooldown
         async function loadPageTestnetPoints(wallets, scanId, forceRetry = false) {
             if (!wallets.length) return;
 
@@ -1319,8 +1609,10 @@
 
             const batchId = ++currentPageBatchId;
             const status = document.getElementById("status");
-            const bridgeMode = await detectActiveBridge();
-            const hasJinaKey = Boolean(getActiveJinaKey());
+
+            if (forceRetry) {
+                for (const st of Object.values(proxyPoolState)) st.cooldownUntil = 0;
+            }
 
             const pending = wallets.filter((w) => {
                 const cached = pointsCache.get(w);
@@ -1343,6 +1635,24 @@
                 updateSinglePointsCell(w);
             }
 
+            // Step 1: Attempt direct Supabase batch sync (loads all wallets in < 1s if publicly readable)
+            status.className = "status";
+            status.textContent = `>_ Syncing Helm Testnet Points (checking fast Supabase feed)...`;
+            const synced = await trySyncViaHelmSupabase(wallets);
+            if (scanId !== currentScanId || batchId !== currentPageBatchId) return;
+
+            if (synced) {
+                pauseBtn.style.display = "none";
+                updatePageControlButtons();
+                const okCount = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
+                status.className = "status ok";
+                status.textContent = `>_ Fast Sync Complete! Loaded ${okCount}/${wallets.length} Helm Testnet Points!`;
+                if (sortField === "points") renderTable(false);
+                return;
+            }
+
+            // Step 2: Rotate across Multi-Proxy Pool / Tampermonkey / Local Proxy
+            const bridgeMode = await detectActiveBridge();
             let pass = 0;
             const maxPasses = 12;
 
@@ -1356,29 +1666,27 @@
 
                 if (roundQueue.length === 0) break;
 
-                // Immediately show active fetching status when resuming after cooldown
                 const doneAtRoundStart = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
                 status.className = "status ok";
                 status.textContent = pass === 0
                     ? `>_ Page ${currentPage}: Fetching Helm Testnet Points (${doneAtRoundStart}/${wallets.length})...`
                     : `>_ Page ${currentPage}: Resuming fetch (${doneAtRoundStart}/${wallets.length} loaded, ${roundQueue.length} remaining)...`;
 
-                // After first cooldown, switch to gentle 1-worker steady pacing so rate limits don't re-trigger
-                const concurrency = (bridgeMode === "tampermonkey" || bridgeMode === "proxy")
-                    ? 5
-                    : (pass === 0 ? 2 : 1);
-                const delayMs = (bridgeMode === "tampermonkey" || bridgeMode === "proxy")
-                    ? 120
-                    : (pass === 0 ? (hasJinaKey ? 450 : 750) : 900);
+                const concurrency = (bridgeMode === "tampermonkey" || bridgeMode === "proxy") ? 5 : 2;
+                const delayMs = (bridgeMode === "tampermonkey" || bridgeMode === "proxy") ? 120 : 400;
 
                 let idx = 0;
-                let consecutiveBlocks = 0;
-                let shouldCooldown = false;
+                let allProxiesBusy = false;
 
                 async function worker() {
                     while (idx < roundQueue.length) {
                         if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
-                        if (shouldCooldown) return;
+                        if (allProxiesBusy) return;
+
+                        if (bridgeMode === "pool" && getAvailableProviders().length === 0) {
+                            allProxiesBusy = true;
+                            return;
+                        }
 
                         const wallet = roundQueue[idx++];
                         pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
@@ -1388,7 +1696,6 @@
                         if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
 
                         if (result.status === "ok") {
-                            consecutiveBlocks = 0;
                             pointsCache.set(wallet, result);
                             updateSinglePointsCell(wallet);
                             schedulePersistCache();
@@ -1399,9 +1706,8 @@
                         } else {
                             pointsCache.set(wallet, { status: "ratelimit", display: "Cooldown", numeric: -1 });
                             updateSinglePointsCell(wallet);
-                            consecutiveBlocks++;
-                            if (consecutiveBlocks >= 4) {
-                                shouldCooldown = true;
+                            if (bridgeMode === "pool" && getAvailableProviders().length === 0) {
+                                allProxiesBusy = true;
                                 return;
                             }
                         }
@@ -1435,17 +1741,21 @@
                     break;
                 }
 
-                // Adaptive cooldown: 35s first time, 60s on subsequent passes so 1-min rate limit resets cleanly
-                const cooldownSeconds = pass === 1 ? 35 : 60;
+                // Wait until the earliest proxy in the pool exits its cooldown
+                const waitMs = bridgeMode === "pool" ? getEarliestProviderReadyMs() : 45000;
+                const cooldownSeconds = Math.max(5, Math.ceil(waitMs / 1000));
                 const doneNow = wallets.filter((w) => pointsCache.get(w)?.status === "ok").length;
                 skipCooldownFlag = false;
                 skipBtn.style.display = "inline-flex";
 
                 for (let sec = cooldownSeconds; sec > 0; sec--) {
                     if (scanId !== currentScanId || batchId !== currentPageBatchId || isFetchPaused) return;
-                    if (skipCooldownFlag) break;
+                    if (skipCooldownFlag) {
+                        for (const st of Object.values(proxyPoolState)) st.cooldownUntil = 0;
+                        break;
+                    }
                     status.className = "status";
-                    status.textContent = `>_ Page ${currentPage}: ${doneNow}/${wallets.length} loaded. Rate-limit cooldown: auto-resuming ${remaining} remaining in ${sec}s...`;
+                    status.textContent = `>_ Page ${currentPage}: ${doneNow}/${wallets.length} loaded. All proxies cooling down: auto-resuming ${remaining} remaining in ${sec}s (or click "Fast Console Sync")...`;
                     await sleep(1000);
                 }
 
@@ -1463,7 +1773,7 @@
 
             if (errCount > 0) {
                 status.className = "status error";
-                status.textContent = `>_ Page ${currentPage}: Loaded ${okCount}/${wallets.length} points (${errCount} failed). Click "Retry Remaining".`;
+                status.textContent = `>_ Page ${currentPage}: Loaded ${okCount}/${wallets.length} points (${errCount} blocked by proxy limit). Use "Fast Console Sync" for instant 100/100.`;
             } else {
                 status.className = "status ok";
                 status.textContent = `>_ Page ${currentPage}: All ${okCount}/${wallets.length} Helm Testnet Points loaded!`;
@@ -1479,6 +1789,70 @@
             loadPageTestnetPoints(currentVisibleSlice.map((h) => h.wallet), currentScanId, true);
         }
 
+        // ==================== LAYER 3: FAST CONSOLE SYNC MODAL ====================
+        function getUnloadedWalletsForConsole() {
+            const pageMissing = currentVisibleSlice
+                .map((h) => h.wallet)
+                .filter((w) => pointsCache.get(w)?.status !== "ok");
+            if (pageMissing.length > 0) return pageMissing;
+
+            return allHolders
+                .map((h) => h.wallet)
+                .filter((w) => pointsCache.get(w)?.status !== "ok");
+        }
+
+        function openConsoleSyncModal() {
+            const targets = getUnloadedWalletsForConsole();
+            document.getElementById("consoleTargetCount").textContent = targets.length > 0
+                ? `${targets.length} wallets queued`
+                : "All wallets already loaded!";
+            document.getElementById("consoleImportInput").value = "";
+            document.getElementById("consoleModal").classList.add("open");
+        }
+
+        function closeConsoleSyncModal() {
+            document.getElementById("consoleModal").classList.remove("open");
+        }
+
+        function copyHelmConsoleScript() {
+            const targets = getUnloadedWalletsForConsole();
+            const script = `(async()=>{const ws=${JSON.stringify(targets)};const out={};for(let i=0;i<ws.length;i+=8){await Promise.all(ws.slice(i,i+8).map(async w=>{try{const r=await fetch('/profile/'+w);const t=await r.text();const m=t.match(/Testnet Points[\\s\\S]{0,280}?<span[^>]*>([\\d,.]+)<\\/span>/i);out[w]=m?m[1].trim():'0';}catch{out[w]='0';}}));console.log('Fetched',Math.min(i+8,ws.length)+'/'+ws.length);}const json=JSON.stringify(out);try{await navigator.clipboard.writeText(json);console.log('✅ Copied to clipboard! Paste it back in Scanner.');}catch{console.log('Copy this JSON:\\n'+json);}})();`;
+            navigator.clipboard.writeText(script);
+            const btn = document.getElementById("copyConsoleScriptBtn");
+            const old = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Script Copied!';
+            setTimeout(() => (btn.innerHTML = old), 1600);
+        }
+
+        function importConsolePoints() {
+            const raw = document.getElementById("consoleImportInput").value.trim();
+            if (!raw) return;
+            try {
+                const parsed = JSON.parse(raw);
+                let imported = 0;
+                for (const [wallet, pts] of Object.entries(parsed)) {
+                    const str = String(pts).trim();
+                    pointsCache.set(wallet, {
+                        status: "ok",
+                        display: str,
+                        numeric: Number(str.replace(/,/g, "")) || 0
+                    });
+                    updateSinglePointsCell(wallet);
+                    imported++;
+                }
+                schedulePersistCache();
+                updatePageControlButtons();
+                closeConsoleSyncModal();
+                const status = document.getElementById("status");
+                status.className = "status ok";
+                status.textContent = `>_ Imported ${imported} Helm Testnet Points successfully!`;
+                if (sortField === "points") renderTable(false);
+            } catch (e) {
+                alert("Invalid JSON pasted. Please copy the full JSON output from the console.");
+            }
+        }
+
+        // ==================== HOLDER SCANNER & TABLE ====================
         async function scanHolders() {
             const mint = document.getElementById("mintInput").value.trim();
             const customRpc = document.getElementById("rpcInput").value.trim();
