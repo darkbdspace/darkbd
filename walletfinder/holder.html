@@ -376,11 +376,68 @@
 
         .stat-val {
             font-family: var(--font-head);
-            font-size: 1.45rem;
+            font-size: 1.35rem;
             font-weight: 900;
             color: var(--accent);
             margin-top: 0.35rem;
             word-break: break-all;
+        }
+
+        .stat-sub {
+            font-family: var(--font-code);
+            font-size: 0.74rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        /* ==================== PAGE RANGE BATCH BAR ==================== */
+        .range-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.9rem 1rem;
+            margin-bottom: 1rem;
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .range-inputs {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+
+        .range-title {
+            font-family: var(--font-code);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-right: 0.2rem;
+        }
+
+        .range-label {
+            display: inline-block;
+            margin: 0;
+            font-size: 0.76rem;
+            color: var(--text-secondary);
+        }
+
+        .range-sep {
+            font-family: var(--font-code);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .range-num-input {
+            width: 78px;
+            padding: 0.42rem 0.55rem;
+            font-size: 0.84rem;
+            text-align: center;
+            border-radius: 6px;
         }
 
         /* ==================== TABLE & TOOLBAR ==================== */
@@ -555,8 +612,8 @@
         }
 
         .copy-mini {
-            padding: 0.38rem 0.68rem;
-            font-size: 0.78rem;
+            padding: 0.42rem 0.75rem;
+            font-size: 0.8rem;
             border-radius: 6px;
         }
 
@@ -658,6 +715,9 @@
             .page-title {
                 font-size: 1.65rem;
             }
+            .range-num-input {
+                width: 68px;
+            }
         }
     </style>
 </head>
@@ -683,7 +743,7 @@
         <div class="page-header">
             <div class="badge"><i class="fa-solid fa-radar"></i> WEB3 ON-CHAIN UTILITY</div>
             <h1 class="page-title">Solana Token <span>Holder Scanner</span></h1>
-            <p class="page-subtitle">Auto-detects Devnet / Mainnet &bull; SPL Token &amp; Token-2022 &bull; Continuous Background Helm Points</p>
+            <p class="page-subtitle">Auto-detects Devnet / Mainnet &bull; 10-Page Batch &amp; Custom Page-Range Helm Points Checker</p>
         </div>
 
         <div class="card">
@@ -702,7 +762,7 @@
                     <div>
                         <label for="proxyInput"><i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> Custom CORS / Worker Proxy (Optional)</label>
                         <input id="proxyInput" value="" placeholder="https://your-worker.workers.dev/?url=" autocomplete="off" oninput="saveSettings()" />
-                        <p class="hint">Leave empty to use built-in Mobile Multi-Proxy &amp; Jina Reader.</p>
+                        <p class="hint">Leave empty to use built-in 4-Channel Turbo Proxy Pool.</p>
                     </div>
                     <div>
                         <label for="jinaKeyInput"><i class="fa-solid fa-key" style="color:var(--accent)"></i> Custom Jina API Key (Optional)</label>
@@ -726,7 +786,7 @@
                     <i class="fa-solid fa-sliders"></i> RPC &amp; Proxy Settings
                 </button>
             </div>
-            <div id="status" class="status">&gt;_ Ready. Click "Scan All Holders" to load holders &amp; continuously check Helm Testnet Points across all pages.</div>
+            <div id="status" class="status">&gt;_ Ready. Click "Scan All Holders" to load holders &amp; check 10 pages at a time.</div>
         </div>
 
         <div id="statsSection" class="stats" style="display: none;">
@@ -743,12 +803,32 @@
                 <div id="statSupply" class="stat-val">0</div>
             </div>
             <div class="stat-box">
-                <div class="stat-label">Points Checked</div>
+                <div class="stat-label">Batch Points Checked</div>
                 <div id="statPointsProgress" class="stat-val">0 / 0</div>
+                <div id="statTotalCached" class="stat-sub">Total Cached: 0 / 0</div>
             </div>
         </div>
 
         <div id="resultsCard" class="card" style="display: none;">
+            <!-- 10-PAGE BATCH & CUSTOM PAGE RANGE RECHECK BAR -->
+            <div class="range-bar">
+                <div class="range-inputs">
+                    <span class="range-title"><i class="fa-solid fa-layer-group" style="color:var(--accent)"></i> Page Range:</span>
+                    <label class="range-label" for="startPageInput">Start</label>
+                    <input id="startPageInput" type="number" min="1" value="1" class="range-num-input" onkeydown="if(event.key==='Enter') onCheckRangeClick()" />
+                    <span class="range-sep">to</span>
+                    <label class="range-label" for="endPageInput">End</label>
+                    <input id="endPageInput" type="number" min="1" value="10" class="range-num-input" onkeydown="if(event.key==='Enter') onCheckRangeClick()" />
+                    <button id="checkRangeBtn" class="btn btn-primary copy-mini" onclick="onCheckRangeClick()" title="Recheck Testnet Points for selected Start–End pages">
+                        <i class="fa-solid fa-arrows-rotate"></i> Check Points
+                    </button>
+                    <button id="nextBatchBtn" class="btn copy-mini" onclick="checkNextTenPages()" title="Check the next 10 pages">
+                        <i class="fa-solid fa-forward-step"></i> Next 10 Pages (11–20)
+                    </button>
+                </div>
+                <div id="batchStatusBadge" class="sort-pill">Active Batch: <span>Pages 1–10</span></div>
+            </div>
+
             <div class="toolbar">
                 <div class="toolbar-left">
                     <input
@@ -760,7 +840,7 @@
                     <button id="pauseResumeBtn" class="btn copy-mini" onclick="togglePauseFetch()" style="display: none;">
                         <i class="fa-solid fa-pause"></i> Pause Fetch
                     </button>
-                    <button id="retryAllBtn" class="btn copy-mini" onclick="retryAllFailedPoints()" style="display: none;">
+                    <button id="retryBatchBtn" class="btn copy-mini" onclick="retryActiveBatchFailed()" style="display: none;">
                         <i class="fa-solid fa-rotate-right"></i> Retry Failed
                     </button>
                     <button id="clearCacheBtn" class="btn copy-mini btn-ghost" onclick="clearPointsCache()" title="Clear saved points cache">
@@ -884,7 +964,7 @@
         })();
     </script>
 
-    <!-- SOLANA HOLDER SCANNER + MOBILE MULTI-PROXY + CONTINUOUS GLOBAL POINTS ENGINE -->
+    <!-- SOLANA HOLDER SCANNER + 10-PAGE BATCH & RANGE RECHECK TURBO ENGINE -->
     <script>
         const DEFAULT_DEVNET_RPC = [
             "https://devnet.helius-rpc.com/?api-key=",
@@ -892,22 +972,25 @@
         ].join("");
         const MAINNET_RPC = "https://api.mainnet-beta.solana.com";
 
-        // Built-in Jina API Key (works natively in mobile & desktop browsers without extensions)
         const DEFAULT_JINA_API_KEY = [
             "jina_467d505e69d84369ba2bf8d2a5ff29f2",
             "dtjiIk6RfPA6ZikLZmQ-csx5tzmb"
         ].join("");
 
         const PAGE_SIZE = 100;
+        const BATCH_PAGES = 10;
         const CACHE_STORAGE_KEY = "helm_points_cache_v1";
 
         let allHolders = [];
         let totalHeldSupply = 0;
         let currentScanId = 0;
-        let globalWorkerId = 0;
+        let batchWorkerId = 0;
         let currentVisibleSlice = [];
+        let activeBatchHolders = [];
+        let activeRangeStart = 1;
+        let activeRangeEnd = 10;
         let isFetchPaused = false;
-        let proxyRotationIndex = 0;
+        let wakeLockSentinel = null;
 
         let sortField = "balance";
         let sortOrder = "desc";
@@ -950,11 +1033,32 @@
         function clearPointsCache() {
             pointsCache.clear();
             localStorage.removeItem(CACHE_STORAGE_KEY);
-            updateGlobalStatsProgress();
+            updateBatchStatsProgress();
             if (allHolders.length > 0) {
                 renderTable();
-                startGlobalPointsQueue(currentScanId, true);
+                startPageRangeScan(activeRangeStart, activeRangeEnd, currentScanId, true);
             }
+        }
+
+        // Keep mobile screen awake while active 10-page batch runs
+        async function requestMobileWakeLock() {
+            try {
+                if ("wakeLock" in navigator && !wakeLockSentinel) {
+                    wakeLockSentinel = await navigator.wakeLock.request("screen");
+                    wakeLockSentinel.addEventListener("release", () => {
+                        wakeLockSentinel = null;
+                    });
+                }
+            } catch (_) {}
+        }
+
+        function releaseMobileWakeLock() {
+            try {
+                if (wakeLockSentinel) {
+                    wakeLockSentinel.release();
+                    wakeLockSentinel = null;
+                }
+            } catch (_) {}
         }
 
         // Load saved custom settings
@@ -1047,13 +1151,18 @@
                     }
                 } catch (_) {}
 
-                const htmlMatch = raw.match(/Testnet Points[\s\S]{0,280}?<span[^>]*>([\d,.]+)<\/span>/i);
+                const htmlMatch = raw.match(/Testnet Points[\s\S]{0,350}?<span[^>]*>\s*([\d,]+(?:\.\d+)?)\s*<\/span>/i);
                 if (htmlMatch && htmlMatch[1]) {
                     return htmlMatch[1].trim();
                 }
+
+                const rscMatch = raw.match(/Testnet Points[\s\S]{0,260}?"([\d,]+(?:\.\d+)?)"/i);
+                if (rscMatch && rscMatch[1]) {
+                    return rscMatch[1].trim();
+                }
             }
 
-            const mdMatch = raw.match(/Testnet Points[\s\S]{0,140}?Earned during the current testnet\s+([\d,]+(?:\.\d+)?)/i);
+            const mdMatch = raw.match(/Testnet Points[\s\S]{0,160}?Earned during the current testnet\s+([\d,]+(?:\.\d+)?)/i);
             if (mdMatch && mdMatch[1]) {
                 return mdMatch[1].trim();
             }
@@ -1066,121 +1175,169 @@
             return null;
         }
 
-        // Built-in Mobile & Desktop CORS Proxy Rotation (zero extensions needed)
-        async function fetchViaCorsProxyPool(profileUrl) {
-            const proxies = [
-                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`, json: true },
-                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, json: false },
-                { url: `https://corsproxy.io/?${encodeURIComponent(profileUrl)}`, json: false }
-            ];
-
-            const start = proxyRotationIndex++ % proxies.length;
-            for (let i = 0; i < proxies.length; i++) {
-                const proxy = proxies[(start + i) % proxies.length];
-                try {
-                    const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 10000);
-                    const res = await fetch(proxy.url, { signal: controller.signal });
-                    clearTimeout(timer);
-
-                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
-                    if (!res.ok) continue;
-
-                    const html = proxy.json ? (await res.json())?.contents : await res.text();
-                    if (!html) continue;
-                    if (html.includes("Just a moment...") || html.includes("Attention Required! | Cloudflare")) continue;
-
-                    const pts = extractTestnetPoints(html);
-                    if (pts !== null) {
-                        return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
-                    }
-                    if (html.includes("_next") && (html.includes("Helm") || html.includes("Star Trader"))) {
-                        return { status: "ok", display: "0", numeric: 0 };
-                    }
-                } catch (_) {}
+        function parseProfilePayload(text) {
+            if (!text) return null;
+            if (text.includes("Just a moment...") || text.includes("Attention Required! | Cloudflare")) {
+                return null;
+            }
+            const pts = extractTestnetPoints(text);
+            if (pts !== null) {
+                return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
+            }
+            if (
+                text.includes("Star Trader") ||
+                text.includes("No bio") ||
+                text.includes("PnL Curve") ||
+                text.includes("Testnet Points")
+            ) {
+                return { status: "ok", display: "0", numeric: 0 };
             }
             return null;
         }
 
-        // Fetches single wallet points natively from browser (Mobile + Desktop compatible)
-        async function fetchWalletTestnetPoints(wallet) {
-            const profileUrl = `https://helm.trading/profile/${wallet}`;
-
-            // Optional 1: User's Custom Cloudflare Worker / Local Proxy (if provided in settings)
+        // ==================== 4-CHANNEL PARALLEL FETCH ENGINE ====================
+        function buildFetchChannels() {
             const customProxy = document.getElementById("proxyInput").value.trim();
             if (customProxy) {
-                try {
-                    const fullProxyUrl = customProxy.includes("?")
-                        ? `${customProxy}${encodeURIComponent(profileUrl)}`
-                        : `${customProxy.replace(/\/$/, "")}/?url=${encodeURIComponent(profileUrl)}`;
-
-                    const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 12000);
-                    const res = await fetch(fullProxyUrl, { signal: controller.signal });
-                    clearTimeout(timer);
-
-                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
-                    if (res.ok) {
-                        const html = await res.text();
-                        const pts = extractTestnetPoints(html);
-                        if (pts !== null) {
-                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
-                        }
-                        if (html.includes("_next")) {
-                            return { status: "ok", display: "0", numeric: 0 };
-                        }
+                return [{
+                    name: "custom",
+                    cooldownUntil: 0,
+                    failCount: 0,
+                    fetch: async (profileUrl) => {
+                        const url = customProxy.includes("?")
+                            ? `${customProxy}${encodeURIComponent(profileUrl)}`
+                            : `${customProxy.replace(/\/$/, "")}/?url=${encodeURIComponent(profileUrl)}`;
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 8000);
+                        const res = await fetch(url, { signal: controller.signal });
+                        clearTimeout(timer);
+                        if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                        if (!res.ok) return null;
+                        return parseProfilePayload(await res.text());
                     }
-                } catch (_) {}
+                }];
             }
 
-            // Primary Built-in Bridge: Jina Reader API (works directly on Mobile & Desktop)
-            try {
-                const jinaKey = getActiveJinaKey();
-                const headers = {
-                    "Accept": "text/plain",
-                    "X-Return-Format": "markdown",
-                    "X-With-Generated-Alt": "false"
-                };
-                if (jinaKey) {
-                    headers["Authorization"] = `Bearer ${jinaKey}`;
-                }
-
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 14000);
-                const res = await fetch(`https://r.jina.ai/${profileUrl}`, {
-                    headers,
-                    signal: controller.signal
-                });
-                clearTimeout(timer);
-
-                if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
-
-                if (res.ok) {
-                    const text = await res.text();
-                    if (!text.includes("Just a moment...") && !text.includes("Attention Required! | Cloudflare")) {
-                        const pts = extractTestnetPoints(text);
-                        if (pts !== null) {
-                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
+            return [
+                {
+                    name: "codetabs",
+                    cooldownUntil: 0,
+                    failCount: 0,
+                    fetch: async (profileUrl) => {
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 6500);
+                        const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, {
+                            signal: controller.signal
+                        });
+                        clearTimeout(timer);
+                        if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                        if (!res.ok) return null;
+                        return parseProfilePayload(await res.text());
+                    }
+                },
+                {
+                    name: "allorigins",
+                    cooldownUntil: 0,
+                    failCount: 0,
+                    fetch: async (profileUrl) => {
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 6500);
+                        const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(profileUrl)}`, {
+                            signal: controller.signal
+                        });
+                        clearTimeout(timer);
+                        if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                        if (!res.ok) return null;
+                        return parseProfilePayload(await res.text());
+                    }
+                },
+                {
+                    name: "corsproxy",
+                    cooldownUntil: 0,
+                    failCount: 0,
+                    fetch: async (profileUrl) => {
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 6500);
+                        const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(profileUrl)}`, {
+                            signal: controller.signal
+                        });
+                        clearTimeout(timer);
+                        if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                        if (!res.ok) return null;
+                        return parseProfilePayload(await res.text());
+                    }
+                },
+                {
+                    name: "jina",
+                    cooldownUntil: 0,
+                    failCount: 0,
+                    fetch: async (profileUrl) => {
+                        const jinaKey = getActiveJinaKey();
+                        const headers = {
+                            "Accept": "text/plain",
+                            "X-Return-Format": "markdown",
+                            "X-With-Generated-Alt": "false"
+                        };
+                        if (jinaKey) {
+                            headers["Authorization"] = `Bearer ${jinaKey}`;
                         }
-                        if (text.includes("Star Trader") || text.includes("No bio") || text.includes("PnL Curve")) {
-                            return { status: "ok", display: "0", numeric: 0 };
-                        }
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 7500);
+                        const res = await fetch(`https://r.jina.ai/${profileUrl}`, {
+                            headers,
+                            signal: controller.signal
+                        });
+                        clearTimeout(timer);
+                        if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                        if (!res.ok) return null;
+                        return parseProfilePayload(await res.text());
                     }
                 }
-            } catch (_) {}
+            ];
+        }
 
-            // Secondary Built-in Bridge: Rotating Public CORS Proxies (if Jina hits rate limit)
-            const fb = await fetchViaCorsProxyPool(profileUrl);
-            if (fb) return fb;
+        let channelCursor = 0;
 
-            return { status: "ratelimit", display: "Cooldown", numeric: -1 };
+        async function fetchWithChannels(wallet, channels) {
+            const profileUrl = `https://helm.trading/profile/${wallet}`;
+            const now = Date.now();
+            const healthy = channels.filter((c) => now >= c.cooldownUntil);
+
+            if (healthy.length === 0) {
+                return { status: "all_cooldown" };
+            }
+
+            const start = channelCursor++ % healthy.length;
+            for (let i = 0; i < healthy.length; i++) {
+                const ch = healthy[(start + i) % healthy.length];
+                if (Date.now() < ch.cooldownUntil) continue;
+
+                try {
+                    const parsed = await ch.fetch(profileUrl);
+                    if (parsed && parsed.status === "ok") {
+                        ch.failCount = 0;
+                        return parsed;
+                    }
+                } catch (_) {}
+
+                ch.failCount++;
+                if (ch.failCount >= 2) {
+                    ch.cooldownUntil = Date.now() + 12000;
+                    ch.failCount = 0;
+                }
+            }
+
+            return { status: "ratelimit" };
         }
 
         function formatPointsCell(wallet) {
             const entry = pointsCache.get(wallet);
             const profileUrl = `https://helm.trading/profile/${wallet}`;
 
-            if (!entry || entry.status === "queued") {
+            if (!entry) {
+                return `<span class="points-muted">&mdash;</span>`;
+            }
+            if (entry.status === "queued") {
                 return `<span class="points-muted"><i class="fa-regular fa-clock"></i> Queued</span>`;
             }
             if (entry.status === "loading") {
@@ -1211,25 +1368,61 @@
             }
         }
 
-        function updateGlobalStatsProgress() {
-            const total = allHolders.length;
-            const done = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
-            const el = document.getElementById("statPointsProgress");
-            if (el) {
-                el.textContent = `${done.toLocaleString()} / ${total.toLocaleString()}`;
+        function updateBatchStatsProgress() {
+            const batchTotal = activeBatchHolders.length;
+            const batchDone = activeBatchHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+            const totalCached = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+
+            const progEl = document.getElementById("statPointsProgress");
+            if (progEl) {
+                progEl.textContent = `${batchDone.toLocaleString()} / ${batchTotal.toLocaleString()}`;
+            }
+            const subEl = document.getElementById("statTotalCached");
+            if (subEl) {
+                subEl.textContent = `Pages ${activeRangeStart}–${activeRangeEnd} • Total Cached: ${totalCached.toLocaleString()}`;
+            }
+        }
+
+        function updateRangeControlsUI() {
+            const totalPages = Math.max(1, Math.ceil(allHolders.length / PAGE_SIZE));
+            const startInput = document.getElementById("startPageInput");
+            const endInput = document.getElementById("endPageInput");
+            const nextBtn = document.getElementById("nextBatchBtn");
+            const badge = document.getElementById("batchStatusBadge");
+
+            startInput.max = totalPages;
+            endInput.max = totalPages;
+            startInput.value = activeRangeStart;
+            endInput.value = activeRangeEnd;
+
+            if (badge) {
+                badge.innerHTML = `Active Batch: <span>Pages ${activeRangeStart}–${activeRangeEnd}</span> (of ${totalPages})`;
+            }
+
+            if (nextBtn) {
+                if (activeRangeEnd >= totalPages) {
+                    nextBtn.disabled = true;
+                    nextBtn.innerHTML = `<i class="fa-solid fa-check"></i> End of Pages (${totalPages})`;
+                } else {
+                    const nextStart = activeRangeEnd + 1;
+                    const nextEnd = Math.min(totalPages, nextStart + BATCH_PAGES - 1);
+                    nextBtn.disabled = false;
+                    nextBtn.innerHTML = `<i class="fa-solid fa-forward-step"></i> Next 10 Pages (${nextStart}–${nextEnd})`;
+                }
             }
         }
 
         function updateControlButtons() {
-            const retryBtn = document.getElementById("retryAllBtn");
-            const hasFailedAnywhere = allHolders.some((h) => pointsCache.get(h.wallet)?.status === "error");
-            retryBtn.style.display = hasFailedAnywhere ? "inline-flex" : "none";
+            const retryBtn = document.getElementById("retryBatchBtn");
+            const hasFailedInBatch = activeBatchHolders.some((h) => pointsCache.get(h.wallet)?.status === "error");
+            retryBtn.style.display = hasFailedInBatch ? "inline-flex" : "none";
         }
 
         async function retrySingleWallet(wallet) {
+            const channels = buildFetchChannels();
             pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
             updateSinglePointsCell(wallet);
-            const result = await fetchWalletTestnetPoints(wallet);
+            const result = await fetchWithChannels(wallet, channels);
             if (result.status === "ok") {
                 pointsCache.set(wallet, result);
                 schedulePersistCache();
@@ -1237,7 +1430,7 @@
                 pointsCache.set(wallet, { status: "error", display: "Failed", numeric: -1 });
             }
             updateSinglePointsCell(wallet);
-            updateGlobalStatsProgress();
+            updateBatchStatsProgress();
             updateControlButtons();
         }
 
@@ -1245,28 +1438,28 @@
             isFetchPaused = !isFetchPaused;
             const btn = document.getElementById("pauseResumeBtn");
             if (isFetchPaused) {
-                globalWorkerId++;
+                batchWorkerId++;
+                releaseMobileWakeLock();
                 btn.innerHTML = '<i class="fa-solid fa-play"></i> Resume Fetch';
-                for (const h of allHolders) {
+                for (const h of activeBatchHolders) {
                     const st = pointsCache.get(h.wallet)?.status;
                     if (st === "loading" || st === "ratelimit") {
                         pointsCache.set(h.wallet, { status: "queued", display: "...", numeric: -1 });
                         updateSinglePointsCell(h.wallet);
                     }
                 }
-                const done = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+                const done = activeBatchHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
                 document.getElementById("status").className = "status";
-                document.getElementById("status").textContent = `>_ Paused (${done}/${allHolders.length} checked). Click "Resume Fetch" to continue across all pages.`;
+                document.getElementById("status").textContent = `>_ Paused Pages ${activeRangeStart}–${activeRangeEnd} (${done}/${activeBatchHolders.length} checked). Click "Resume Fetch" to continue.`;
             } else {
                 btn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause Fetch';
-                startGlobalPointsQueue(currentScanId, false);
+                startPageRangeScan(activeRangeStart, activeRangeEnd, currentScanId, false);
             }
             updateControlButtons();
         }
 
-        // Picks the next wallet to check: prioritizes whichever page the user is currently viewing, then continues through ALL pages
-        function claimNextPendingWallet(claimedSet) {
-            // 1. Priority: un-checked wallets on the active page you're looking at
+        // Prioritizes currently viewed page first, then finishes the rest of the active 10-page batch
+        function claimNextBatchWallet(claimedSet) {
             for (const h of currentVisibleSlice) {
                 if (claimedSet.has(h.wallet)) continue;
                 const st = pointsCache.get(h.wallet)?.status;
@@ -1275,8 +1468,7 @@
                     return h.wallet;
                 }
             }
-            // 2. Global continuation: all remaining un-checked wallets across Page 1, 2, 3...
-            for (const h of allHolders) {
+            for (const h of activeBatchHolders) {
                 if (claimedSet.has(h.wallet)) continue;
                 const st = pointsCache.get(h.wallet)?.status;
                 if (st === "queued" || st === "ratelimit") {
@@ -1287,104 +1479,121 @@
             return null;
         }
 
-        // Continuous global background loop: keeps checking all holders regardless of which page you switch to
-        async function startGlobalPointsQueue(scanId, forceRetry = false) {
+        // Scans/Rechecks Testnet Points ONLY for the specified Start Page to End Page range
+        async function startPageRangeScan(startPage, endPage, scanId, forceRecheck = true) {
             if (!allHolders.length) return;
 
+            const sortedList = getSortedHolders();
+            const totalPages = Math.max(1, Math.ceil(sortedList.length / PAGE_SIZE));
+
+            let sPage = Math.max(1, Math.min(totalPages, parseInt(startPage, 10) || 1));
+            let ePage = Math.max(1, Math.min(totalPages, parseInt(endPage, 10) || sPage));
+            if (sPage > ePage) {
+                [sPage, ePage] = [ePage, sPage];
+            }
+
+            activeRangeStart = sPage;
+            activeRangeEnd = ePage;
+            updateRangeControlsUI();
+
+            // Slice holders belonging to [sPage .. ePage]
+            const startIdx = (sPage - 1) * PAGE_SIZE;
+            const endIdx = Math.min(ePage * PAGE_SIZE, sortedList.length);
+            activeBatchHolders = sortedList.slice(startIdx, endIdx);
+
+            // Jump to sPage if user is currently outside the chosen range so they see live updates
+            if (currentPage < sPage || currentPage > ePage) {
+                currentPage = sPage;
+                renderTable();
+            }
+
             isFetchPaused = false;
+            requestMobileWakeLock();
+
             const pauseBtn = document.getElementById("pauseResumeBtn");
             pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause Fetch';
             pauseBtn.style.display = "inline-flex";
 
-            const workerId = ++globalWorkerId;
+            const workerId = ++batchWorkerId;
             const status = document.getElementById("status");
-            const hasJinaKey = Boolean(getActiveJinaKey());
-            const hasCustomProxy = Boolean(document.getElementById("proxyInput").value.trim());
+            const channels = buildFetchChannels();
 
-            // Mark all un-cached holders across ALL pages as queued
-            for (const h of allHolders) {
+            // Queue wallets in [sPage .. ePage] (if forceRecheck is true, resets previous values to recheck fresh)
+            for (const h of activeBatchHolders) {
                 const cached = pointsCache.get(h.wallet);
-                if (!cached || (forceRetry && (cached.status === "error" || cached.status === "ratelimit"))) {
+                if (forceRecheck || !cached || cached.status !== "ok") {
                     pointsCache.set(h.wallet, { status: "queued", display: "...", numeric: -1 });
                     updateSinglePointsCell(h.wallet);
                 }
             }
 
-            updateGlobalStatsProgress();
+            updateBatchStatsProgress();
             updateControlButtons();
 
-            const concurrency = hasCustomProxy ? 4 : 2;
-            const delayMs = hasCustomProxy ? 150 : (hasJinaKey ? 350 : 750);
-
+            const concurrency = 8;
             let pass = 0;
             const maxPasses = 20;
 
             while (pass < maxPasses) {
-                if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
+                if (scanId !== currentScanId || workerId !== batchWorkerId || isFetchPaused) return;
 
-                const totalRemaining = allHolders.filter((h) => {
+                const batchRemaining = activeBatchHolders.filter((h) => {
                     const st = pointsCache.get(h.wallet)?.status;
                     return st === "queued" || st === "ratelimit";
                 }).length;
 
-                if (totalRemaining === 0) break;
+                if (batchRemaining === 0) break;
 
                 const claimedInRound = new Set();
-                let consecutiveBlocks = 0;
-                let shouldCooldown = false;
+                let allChannelsCooling = false;
 
                 async function worker() {
                     while (true) {
-                        if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
-                        if (shouldCooldown) return;
+                        if (scanId !== currentScanId || workerId !== batchWorkerId || isFetchPaused) return;
+                        if (allChannelsCooling) return;
 
-                        const wallet = claimNextPendingWallet(claimedInRound);
+                        const wallet = claimNextBatchWallet(claimedInRound);
                         if (!wallet) return;
 
                         pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
                         updateSinglePointsCell(wallet);
 
-                        const result = await fetchWalletTestnetPoints(wallet);
-                        if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
+                        const result = await fetchWithChannels(wallet, channels);
+                        if (scanId !== currentScanId || workerId !== batchWorkerId || isFetchPaused) return;
 
                         if (result.status === "ok") {
-                            consecutiveBlocks = 0;
                             pointsCache.set(wallet, result);
                             updateSinglePointsCell(wallet);
-                            updateGlobalStatsProgress();
+                            updateBatchStatsProgress();
                             schedulePersistCache();
 
-                            const globalDone = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
-                            const pageDone = currentVisibleSlice.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+                            const batchDone = activeBatchHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
                             status.className = "status ok";
-                            status.textContent = `>_ Global Points: ${globalDone}/${allHolders.length} checked (Page ${currentPage}: ${pageDone}/${currentVisibleSlice.length}) — Running across all pages...`;
+                            status.textContent = `>_ Pages ${sPage}–${ePage}: Checked ${batchDone}/${activeBatchHolders.length} Testnet Points...`;
+                        } else if (result.status === "all_cooldown") {
+                            pointsCache.set(wallet, { status: "ratelimit", display: "Cooldown", numeric: -1 });
+                            updateSinglePointsCell(wallet);
+                            allChannelsCooling = true;
+                            return;
                         } else {
                             pointsCache.set(wallet, { status: "ratelimit", display: "Cooldown", numeric: -1 });
                             updateSinglePointsCell(wallet);
-                            consecutiveBlocks++;
-                            if (consecutiveBlocks >= 3) {
-                                shouldCooldown = true;
-                                return;
-                            }
                         }
-
-                        if (delayMs > 0) await sleep(delayMs);
                     }
                 }
 
                 await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
-                if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
+                if (scanId !== currentScanId || workerId !== batchWorkerId || isFetchPaused) return;
 
-                // Ensure any stranded loading items revert to ratelimit for the next pass
-                for (const h of allHolders) {
+                for (const h of activeBatchHolders) {
                     if (pointsCache.get(h.wallet)?.status === "loading") {
                         pointsCache.set(h.wallet, { status: "ratelimit", display: "Cooldown", numeric: -1 });
                         updateSinglePointsCell(h.wallet);
                     }
                 }
 
-                const stillRemaining = allHolders.filter((h) => {
+                const stillRemaining = activeBatchHolders.filter((h) => {
                     const st = pointsCache.get(h.wallet)?.status;
                     return st === "queued" || st === "ratelimit";
                 }).length;
@@ -1393,7 +1602,7 @@
 
                 pass++;
                 if (pass >= maxPasses) {
-                    for (const h of allHolders) {
+                    for (const h of activeBatchHolders) {
                         const st = pointsCache.get(h.wallet)?.status;
                         if (st === "queued" || st === "ratelimit") {
                             pointsCache.set(h.wallet, { status: "error", display: "Failed", numeric: -1 });
@@ -1403,30 +1612,40 @@
                     break;
                 }
 
-                const globalDoneNow = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
-                for (let sec = 12; sec > 0; sec--) {
-                    if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
+                const minCooldownMs = Math.max(
+                    2000,
+                    Math.min(10000, Math.min(...channels.map((c) => Math.max(0, c.cooldownUntil - Date.now()))) || 6000)
+                );
+                const waitSec = Math.ceil(minCooldownMs / 1000);
+                const batchDoneNow = activeBatchHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+
+                for (let sec = waitSec; sec > 0; sec--) {
+                    if (scanId !== currentScanId || workerId !== batchWorkerId || isFetchPaused) return;
                     status.className = "status";
-                    status.textContent = `>_ Global Points: ${globalDoneNow}/${allHolders.length} checked. Server cooldown: auto-continuing ${stillRemaining} remaining in ${sec}s...`;
+                    status.textContent = `>_ Pages ${sPage}–${ePage}: ${batchDoneNow}/${activeBatchHolders.length} checked. Cooling down proxies: auto-resuming ${stillRemaining} remaining in ${sec}s...`;
                     await sleep(1000);
                 }
             }
 
-            if (scanId !== currentScanId || workerId !== globalWorkerId) return;
+            if (scanId !== currentScanId || workerId !== batchWorkerId) return;
 
+            releaseMobileWakeLock();
             pauseBtn.style.display = "none";
-            updateGlobalStatsProgress();
+            updateBatchStatsProgress();
             updateControlButtons();
 
-            const okCount = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
-            const errCount = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "error").length;
+            const okCount = activeBatchHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+            const errCount = activeBatchHolders.filter((h) => pointsCache.get(h.wallet)?.status === "error").length;
 
             if (errCount > 0) {
                 status.className = "status error";
-                status.textContent = `>_ Complete: Loaded ${okCount}/${allHolders.length} points (${errCount} failed). Click "Retry Failed".`;
+                status.textContent = `>_ Pages ${sPage}–${ePage}: Loaded ${okCount}/${activeBatchHolders.length} points (${errCount} failed). Click "Retry Failed" or "Check Points".`;
             } else {
+                const nextHint = ePage < totalPages
+                    ? ` Click "Next 10 Pages (${ePage + 1}–${Math.min(totalPages, ePage + BATCH_PAGES)})" to continue.`
+                    : ` All pages checked!`;
                 status.className = "status ok";
-                status.textContent = `>_ Complete! All ${okCount}/${allHolders.length} Helm Testnet Points checked across all pages!`;
+                status.textContent = `>_ Pages ${sPage}–${ePage} Complete: ${okCount}/${activeBatchHolders.length} points checked!${nextHint}`;
             }
 
             if (sortField === "points") {
@@ -1434,9 +1653,28 @@
             }
         }
 
-        function retryAllFailedPoints() {
+        // Triggered when user enters Start & End page and clicks "Check Points"
+        function onCheckRangeClick() {
             if (!allHolders.length) return;
-            startGlobalPointsQueue(currentScanId, true);
+            const startVal = parseInt(document.getElementById("startPageInput").value, 10) || 1;
+            const endVal = parseInt(document.getElementById("endPageInput").value, 10) || startVal;
+            startPageRangeScan(startVal, endVal, currentScanId, true);
+        }
+
+        // Triggered when user clicks "Next 10 Pages"
+        function checkNextTenPages() {
+            if (!allHolders.length) return;
+            const totalPages = Math.max(1, Math.ceil(allHolders.length / PAGE_SIZE));
+            if (activeRangeEnd >= totalPages) return;
+
+            const nextStart = activeRangeEnd + 1;
+            const nextEnd = Math.min(totalPages, nextStart + BATCH_PAGES - 1);
+            startPageRangeScan(nextStart, nextEnd, currentScanId, true);
+        }
+
+        function retryActiveBatchFailed() {
+            if (!activeBatchHolders.length) return;
+            startPageRangeScan(activeRangeStart, activeRangeEnd, currentScanId, false);
         }
 
         async function scanHolders() {
@@ -1452,11 +1690,11 @@
             }
 
             const scanId = ++currentScanId;
-            globalWorkerId++; // Stop any previous token's background worker
+            batchWorkerId++;
             scanBtn.disabled = true;
             document.getElementById("copyAllBtn").disabled = true;
             document.getElementById("csvBtn").disabled = true;
-            document.getElementById("retryAllBtn").style.display = "none";
+            document.getElementById("retryBatchBtn").style.display = "none";
             document.getElementById("pauseResumeBtn").style.display = "none";
             status.className = "status";
             status.textContent = customRpc
@@ -1500,22 +1738,27 @@
                 currentPage = 1;
                 updateSortUI();
 
+                const totalPages = Math.max(1, Math.ceil(allHolders.length / PAGE_SIZE));
+                activeRangeStart = 1;
+                activeRangeEnd = Math.min(BATCH_PAGES, totalPages);
+                updateRangeControlsUI();
+
                 document.getElementById("statNetwork").textContent = network;
                 document.getElementById("statCount").textContent = allHolders.length.toLocaleString();
                 document.getElementById("statSupply").textContent = totalHeldSupply.toLocaleString(undefined, { maximumFractionDigits: 6 });
-                updateGlobalStatsProgress();
 
                 document.getElementById("statsSection").style.display = "grid";
                 document.getElementById("resultsCard").style.display = "block";
                 document.getElementById("copyAllBtn").disabled = allHolders.length === 0;
                 document.getElementById("csvBtn").disabled = allHolders.length === 0;
 
-                status.className = "status ok";
-                status.textContent = `>_ Found ${allHolders.length.toLocaleString()} active holders (${network}). Starting continuous Testnet Points scan across all pages...`;
-
                 renderTable();
                 if (allHolders.length > 0) {
-                    startGlobalPointsQueue(scanId, false);
+                    // Automatically starts with Pages 1–10 (keeps already-cached points on initial load)
+                    startPageRangeScan(1, activeRangeEnd, scanId, false);
+                } else {
+                    status.className = "status ok";
+                    status.textContent = `>_ No active holders found (${network}).`;
                 }
             } catch (err) {
                 status.className = "status error";
@@ -1665,7 +1908,6 @@
             controls.innerHTML = html;
         }
 
-        // Purely renders the active page without interrupting the continuous global background queue
         function renderTable() {
             const q = document.getElementById("searchInput").value.trim().toLowerCase();
             const sorted = getSortedHolders();
