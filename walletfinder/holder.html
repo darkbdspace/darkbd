@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1VY5BLHXT2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-1VY5BLHXT2');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Token Holder Scanner | DARK</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Favicon -->
+    <link id="dynamic-favicon" rel="icon" type="image/png" href="../icon.png">
+    <style>
+        /* ==================== CSS VARIABLES & THEMES ==================== */
+        :root {
+            --bg-primary: #1a0b2e;
+            --bg-secondary: #28123d;
+            --bg-card: #3b154c;
+            --text-primary: #fff5ea;
+            --text-secondary: #ffd1a9;
+            --accent: #ff7e5f;
+            --accent-glow: rgba(255, 126, 95, 0.35);
+            --border: #5c226e;
+            --success: #34d399;
+            --danger: #f87171;
+            --font-head: 'Orbitron', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-code: 'Fira Code', monospace;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0a0c10;
+            --bg-secondary: #12161f;
+            --bg-card: #181e2a;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent: #00f2fe;
+            --accent-glow: rgba(0, 242, 254, 0.25);
+            --border: #2d3748;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --accent: #2563eb;
+            --accent-glow: rgba(37, 99, 235, 0.15);
+            --border: #e2e8f0;
+            --success: #059669;
+            --danger: #dc2626;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* ==================== NAVBAR ==================== */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(26, 11, 46, 0.78);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            border-bottom: 1px solid var(--border);
+        }
+
+        [data-theme="dark"] header {
+            background: rgba(10, 12, 16, 0.78);
+        }
+
+        [data-theme="light"] header {
+            background: rgba(248, 250, 252, 0.85);
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 2rem;
+            gap: 1rem;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+        }
+
+        .logo {
+            font-family: var(--font-head);
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: 2px;
+        }
+
+        .back-link {
+            font-family: var(--font-code);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .theme-switcher {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--bg-secondary);
+            padding: 0.4rem;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+        }
+
+        .theme-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: var(--font-body);
+        }
+
+        .theme-btn.active {
+            background: var(--accent);
+            color: #000;
+        }
+
+        [data-theme="light"] .theme-btn.active {
+            color: #fff;
+        }
+
+        /* ==================== MAIN CONTAINER ==================== */
+        main {
+            flex: 1;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 7.5rem 2rem 3rem 2rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .badge {
+            font-family: var(--font-code);
+            color: var(--accent);
+            font-size: 0.9rem;
+            display: inline-block;
+            background: var(--bg-card);
+            padding: 0.35rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            margin-bottom: 0.8rem;
+        }
+
+        .page-title {
+            font-family: var(--font-head);
+            font-size: 2.2rem;
+            line-height: 1.2;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-title span {
+            color: var(--accent);
+            text-shadow: 0 0 18px var(--accent-glow);
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* ==================== CARDS & INPUTS ==================== */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .field {
+            margin-bottom: 1.1rem;
+        }
+
+        label {
+            display: block;
+            font-family: var(--font-code);
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.45rem;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.92rem;
+            font-family: var(--font-code);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        .custom-rpc-box {
+            display: none;
+            margin-bottom: 1.1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            border: 1px dashed var(--border);
+        }
+
+        .custom-rpc-box.open {
+            display: block;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+
+        .hint {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 0.4rem;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        [data-theme="light"] .btn-primary {
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            color: #000;
+            filter: brightness(1.08);
+        }
+
+        [data-theme="light"] .btn-primary:hover:not(:disabled) {
+            color: #fff;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 1rem;
+            font-family: var(--font-code);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            word-break: break-word;
+        }
+
+        .status.error { color: var(--danger); }
+        .status.ok { color: var(--success); }
+
+        /* ==================== STATS GRID ==================== */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .stat-box:hover {
+            border-color: var(--accent);
+        }
+
+        .stat-label {
+            font-family: var(--font-code);
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .stat-val {
+            font-family: var(--font-head);
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: var(--accent);
+            margin-top: 0.35rem;
+            word-break: break-all;
+        }
+
+        /* ==================== TABLE & TOOLBAR ==================== */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.85rem;
+            margin-bottom: 1.1rem;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            max-width: 300px;
+        }
+
+        .sort-pill {
+            font-family: var(--font-code);
+            font-size: 0.78rem;
+            padding: 0.35rem 0.7rem;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .sort-pill span {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.85rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-family: var(--font-code);
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            border-radius: 6px 6px 0 0;
+        }
+
+        th.sortable:hover {
+            background: var(--bg-secondary);
+        }
+
+        th.sortable.active-sort {
+            background: var(--bg-secondary);
+            box-shadow: inset 0 -2px 0 var(--accent);
+        }
+
+        .th-inner {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .sort-badge {
+            font-size: 0.68rem;
+            padding: 0.12rem 0.4rem;
+            border-radius: 4px;
+            background: var(--accent);
+            color: #000;
+            font-weight: 700;
+            text-transform: none;
+        }
+
+        [data-theme="light"] .sort-badge {
+            color: #fff;
+        }
+
+        .sort-icon-idle {
+            opacity: 0.45;
+            font-size: 0.78rem;
+        }
+
+        tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        .mono {
+            font-family: var(--font-code);
+            font-size: 0.86rem;
+        }
+
+        .points-link {
+            color: var(--success);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .points-link:hover {
+            text-decoration: underline;
+            color: var(--accent);
+        }
+
+        .points-muted {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .points-wait {
+            color: var(--accent);
+            font-size: 0.8rem;
+        }
+
+        .points-err-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .retry-inline-btn {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            font-family: var(--font-code);
+            font-size: 0.72rem;
+            padding: 0.18rem 0.45rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .retry-inline-btn:hover {
+            background: var(--danger);
+            color: #000;
+        }
+
+        .ext-link-icon {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+        }
+
+        .ext-link-icon:hover {
+            color: var(--accent);
+        }
+
+        .copy-mini {
+            padding: 0.38rem 0.68rem;
+            font-size: 0.78rem;
+            border-radius: 6px;
+        }
+
+        /* ==================== PAGINATION ==================== */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.25rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .page-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            padding: 0.42rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: var(--font-code);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .page-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+        }
+
+        [data-theme="light"] .page-btn.active {
+            color: #fff;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .page-dots {
+            font-family: var(--font-code);
+            color: var(--text-secondary);
+            padding: 0 0.25rem;
+        }
+
+        .page-jump {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-family: var(--font-code);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .page-jump input {
+            width: 72px;
+            padding: 0.38rem 0.55rem;
+            font-size: 0.82rem;
+            text-align: center;
+        }
+
+        /* ==================== FOOTER ==================== */
+        footer {
+            text-align: center;
+            padding: 2.2rem 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-family: var(--font-code);
+            font-size: 0.88rem;
+            margin-top: auto;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                flex-direction: column;
+                padding: 1rem;
+            }
+            main {
+                padding: 9.5rem 1rem 2.5rem 1rem;
+            }
+            .card {
+                padding: 1.15rem;
+            }
+            .page-title {
+                font-size: 1.65rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <header>
+        <nav>
+            <div class="nav-left">
+                <a href="../index.html" class="logo">DARK</a>
+                <a href="../index.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Portfolio</a>
+            </div>
+            <div class="theme-switcher">
+                <button class="theme-btn" data-theme-target="dark" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i> Dark</button>
+                <button class="theme-btn active" data-theme-target="sun-gradient" onclick="setTheme('sun-gradient')"><i class="fa-solid fa-sun"></i> Sun</button>
+                <button class="theme-btn" data-theme-target="light" onclick="setTheme('light')"><i class="fa-solid fa-lightbulb"></i> Light</button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- MAIN SCANNER -->
+    <main>
+        <div class="page-header">
+            <div class="badge"><i class="fa-solid fa-radar"></i> WEB3 ON-CHAIN UTILITY</div>
+            <h1 class="page-title">Solana Token <span>Holder Scanner</span></h1>
+            <p class="page-subtitle">Auto-detects Devnet / Mainnet &bull; SPL Token &amp; Token-2022 &bull; Continuous Background Helm Points</p>
+        </div>
+
+        <div class="card">
+            <div class="field">
+                <label for="mintInput"><i class="fa-solid fa-coins" style="color:var(--accent)"></i> Token Mint Address</label>
+                <input id="mintInput" value="4wMp7FQJrSwHXJ92kKRd9X2LQE1Tw7L4beT7fBLgjY4y" placeholder="Enter SPL Token Mint Address..." />
+            </div>
+
+            <div id="customRpcBox" class="custom-rpc-box">
+                <div class="settings-grid">
+                    <div>
+                        <label for="rpcInput"><i class="fa-solid fa-server" style="color:var(--accent)"></i> Custom Solana RPC (Optional)</label>
+                        <input id="rpcInput" value="" placeholder="https://your-custom-rpc.com/?api-key=..." autocomplete="off" />
+                        <p class="hint">Leave empty to use built-in default RPC.</p>
+                    </div>
+                    <div>
+                        <label for="proxyInput"><i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> Custom CORS / Worker Proxy (Optional)</label>
+                        <input id="proxyInput" value="" placeholder="https://your-worker.workers.dev/?url=" autocomplete="off" oninput="saveSettings()" />
+                        <p class="hint">Leave empty to use built-in Mobile Multi-Proxy &amp; Jina Reader.</p>
+                    </div>
+                    <div>
+                        <label for="jinaKeyInput"><i class="fa-solid fa-key" style="color:var(--accent)"></i> Custom Jina API Key (Optional)</label>
+                        <input id="jinaKeyInput" value="" placeholder="jina_..." autocomplete="off" oninput="saveSettings()" />
+                        <p class="hint">Leave empty to use built-in default Jina key. Paste your own key to override.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="scanBtn" class="btn btn-primary" onclick="scanHolders()">
+                    <i class="fa-solid fa-magnifying-glass"></i> Scan All Holders
+                </button>
+                <button id="copyAllBtn" class="btn" onclick="copyAllWallets()" disabled>
+                    <i class="fa-regular fa-copy"></i> Copy All Wallets
+                </button>
+                <button id="csvBtn" class="btn" onclick="downloadCSV()" disabled>
+                    <i class="fa-solid fa-file-csv"></i> Download CSV
+                </button>
+                <button type="button" class="btn btn-ghost" onclick="toggleCustomRpc()">
+                    <i class="fa-solid fa-sliders"></i> RPC &amp; Proxy Settings
+                </button>
+            </div>
+            <div id="status" class="status">&gt;_ Ready. Click "Scan All Holders" to load holders &amp; continuously check Helm Testnet Points across all pages.</div>
+        </div>
+
+        <div id="statsSection" class="stats" style="display: none;">
+            <div class="stat-box">
+                <div class="stat-label">Network</div>
+                <div id="statNetwork" class="stat-val">-</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Active Holders</div>
+                <div id="statCount" class="stat-val">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Active Balance</div>
+                <div id="statSupply" class="stat-val">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Points Checked</div>
+                <div id="statPointsProgress" class="stat-val">0 / 0</div>
+            </div>
+        </div>
+
+        <div id="resultsCard" class="card" style="display: none;">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <input
+                        id="searchInput"
+                        class="search-input"
+                        placeholder="Filter by wallet address (prefix / suffix)..."
+                        oninput="onSearchChange()"
+                    />
+                    <button id="pauseResumeBtn" class="btn copy-mini" onclick="togglePauseFetch()" style="display: none;">
+                        <i class="fa-solid fa-pause"></i> Pause Fetch
+                    </button>
+                    <button id="retryAllBtn" class="btn copy-mini" onclick="retryAllFailedPoints()" style="display: none;">
+                        <i class="fa-solid fa-rotate-right"></i> Retry Failed
+                    </button>
+                    <button id="clearCacheBtn" class="btn copy-mini btn-ghost" onclick="clearPointsCache()" title="Clear saved points cache">
+                        <i class="fa-solid fa-trash-can"></i> Clear Cache
+                    </button>
+                </div>
+                <div class="toolbar-right">
+                    <div id="sortIndicator" class="sort-pill">Sort: <span>Balance (Max &rarr; Min)</span></div>
+                    <span id="filterCount" class="mono" style="color: var(--text-secondary);"></span>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th id="th-wallet" class="sortable" onclick="toggleSort('wallet')" title="Click to sort by Wallet Address">
+                                <span class="th-inner">Owner Wallet Address <span id="sort-icon-wallet"><i class="fa-solid fa-sort sort-icon-idle"></i></span></span>
+                            </th>
+                            <th id="th-balance" class="sortable active-sort" onclick="toggleSort('balance')" title="Click to toggle Max-Min / Min-Max">
+                                <span class="th-inner">Balance <span id="sort-icon-balance"><span class="sort-badge">Max &rarr; Min</span></span></span>
+                            </th>
+                            <th id="th-share" class="sortable" onclick="toggleSort('share')" title="Click to toggle Max-Min / Min-Max">
+                                <span class="th-inner">Share % <span id="sort-icon-share"><i class="fa-solid fa-sort sort-icon-idle"></i></span></span>
+                            </th>
+                            <th id="th-points" class="sortable" onclick="toggleSort('points')" title="Click to toggle Max-Min / Min-Max">
+                                <span class="th-inner">Testnet Points <span id="sort-icon-points"><i class="fa-solid fa-sort sort-icon-idle"></i></span></span>
+                            </th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+
+            <div id="paginationBar" class="pagination" style="display: none;">
+                <div id="pageControls" class="page-controls"></div>
+                <div class="page-jump">
+                    <span id="pageInfoText">Page 1 of 1</span>
+                    <input id="pageJumpInput" type="number" min="1" placeholder="Page" onkeydown="if(event.key==='Enter') jumpToPage()" />
+                    <button class="page-btn" onclick="jumpToPage()">Go</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>&copy; 2026 Dark. All Rights Reserved. Built with Cyber Space Energy.</p>
+    </footer>
+
+    <!-- THEME & FAVICON SCRIPTS -->
+    <script>
+        function setTheme(themeName) {
+            document.body.setAttribute('data-theme', themeName);
+            localStorage.setItem('dark_portfolio_theme', themeName);
+
+            const buttons = document.querySelectorAll('.theme-btn');
+            buttons.forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-theme-target') === themeName);
+            });
+        }
+
+        const savedTheme = localStorage.getItem('dark_portfolio_theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        }
+
+        (function generateSunGlowFavicon() {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = '../icon.png';
+
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const size = 128;
+                const padding = 22;
+                canvas.width = size;
+                canvas.height = size;
+
+                const centerX = size / 2;
+                const centerY = size / 2;
+                const radius = (size - padding * 2) / 2;
+
+                ctx.shadowColor = '#ff7e5f';
+                ctx.shadowBlur = 24;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff7e5f';
+                ctx.fill();
+
+                ctx.shadowColor = '#ffd200';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffd200';
+                ctx.fill();
+
+                ctx.shadowColor = '#ff4500';
+                ctx.shadowBlur = 8;
+                ctx.strokeStyle = '#ffa500';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.shadowBlur = 0;
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius - 1, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                ctx.drawImage(img, padding, padding, size - padding * 2, size - padding * 2);
+                ctx.restore();
+
+                const favicon = document.getElementById('dynamic-favicon');
+                if (favicon) {
+                    favicon.href = canvas.toDataURL('image/png');
+                }
+            };
+        })();
+    </script>
+
+    <!-- SOLANA HOLDER SCANNER + MOBILE MULTI-PROXY + CONTINUOUS GLOBAL POINTS ENGINE -->
+    <script>
+        const DEFAULT_DEVNET_RPC = [
+            "https://devnet.helius-rpc.com/?api-key=",
+            "98e00548-e607-437e-8437-91ad083fa6c1"
+        ].join("");
+        const MAINNET_RPC = "https://api.mainnet-beta.solana.com";
+
+        // Built-in Jina API Key (works natively in mobile & desktop browsers without extensions)
+        const DEFAULT_JINA_API_KEY = [
+            "jina_467d505e69d84369ba2bf8d2a5ff29f2",
+            "dtjiIk6RfPA6ZikLZmQ-csx5tzmb"
+        ].join("");
+
+        const PAGE_SIZE = 100;
+        const CACHE_STORAGE_KEY = "helm_points_cache_v1";
+
+        let allHolders = [];
+        let totalHeldSupply = 0;
+        let currentScanId = 0;
+        let globalWorkerId = 0;
+        let currentVisibleSlice = [];
+        let isFetchPaused = false;
+        let proxyRotationIndex = 0;
+
+        let sortField = "balance";
+        let sortOrder = "desc";
+        let currentPage = 1;
+
+        // Memory + localStorage Cache: wallet -> { status: 'queued' | 'loading' | 'ok' | 'ratelimit' | 'error', display: string, numeric: number }
+        const pointsCache = new Map();
+
+        // Hydrate persisted points from localStorage
+        (function loadPersistedCache() {
+            try {
+                const raw = localStorage.getItem(CACHE_STORAGE_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                for (const [wallet, val] of Object.entries(parsed)) {
+                    if (val && val.status === "ok") {
+                        pointsCache.set(wallet, val);
+                    }
+                }
+            } catch (_) {}
+        })();
+
+        let persistTimer = null;
+        function schedulePersistCache() {
+            if (persistTimer) return;
+            persistTimer = setTimeout(() => {
+                persistTimer = null;
+                try {
+                    const obj = {};
+                    for (const [wallet, val] of pointsCache.entries()) {
+                        if (val && val.status === "ok") {
+                            obj[wallet] = val;
+                        }
+                    }
+                    localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(obj));
+                } catch (_) {}
+            }, 800);
+        }
+
+        function clearPointsCache() {
+            pointsCache.clear();
+            localStorage.removeItem(CACHE_STORAGE_KEY);
+            updateGlobalStatsProgress();
+            if (allHolders.length > 0) {
+                renderTable();
+                startGlobalPointsQueue(currentScanId, true);
+            }
+        }
+
+        // Load saved custom settings
+        const savedJinaKey = localStorage.getItem("dark_jina_api_key");
+        if (savedJinaKey) {
+            document.getElementById("jinaKeyInput").value = savedJinaKey;
+        }
+        const savedProxyUrl = localStorage.getItem("dark_custom_proxy_url");
+        if (savedProxyUrl) {
+            document.getElementById("proxyInput").value = savedProxyUrl;
+        }
+
+        function saveSettings() {
+            const jinaKey = document.getElementById("jinaKeyInput").value.trim();
+            const proxyUrl = document.getElementById("proxyInput").value.trim();
+            localStorage.setItem("dark_jina_api_key", jinaKey);
+            localStorage.setItem("dark_custom_proxy_url", proxyUrl);
+        }
+
+        function getActiveJinaKey() {
+            const customKey = document.getElementById("jinaKeyInput").value.trim();
+            if (customKey) return customKey;
+            if (DEFAULT_JINA_API_KEY && DEFAULT_JINA_API_KEY.startsWith("jina_") && !DEFAULT_JINA_API_KEY.includes("YOUR_KEY")) {
+                return DEFAULT_JINA_API_KEY;
+            }
+            return "";
+        }
+
+        function sleep(ms) {
+            return new Promise((r) => setTimeout(r, ms));
+        }
+
+        function toggleCustomRpc() {
+            const box = document.getElementById("customRpcBox");
+            box.classList.toggle("open");
+            if (box.classList.contains("open")) {
+                document.getElementById("rpcInput").focus();
+            }
+        }
+
+        async function rpcCall(rpcUrl, method, params) {
+            const res = await fetch(rpcUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+            const data = await res.json();
+            if (data.error) throw new Error(`RPC Error: ${data.error.message}`);
+            return data.result;
+        }
+
+        async function resolveRpcAndMint(mint, customRpc) {
+            if (customRpc) {
+                const info = await rpcCall(customRpc, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
+                if (!info?.value) {
+                    throw new Error("Ei Custom RPC-te Token Mint address pawa jayni!");
+                }
+                return { network: "Custom RPC", rpc: customRpc, account: info.value };
+            }
+
+            const devInfo = await rpcCall(DEFAULT_DEVNET_RPC, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
+            if (devInfo?.value) {
+                return { network: "Devnet", rpc: DEFAULT_DEVNET_RPC, account: devInfo.value };
+            }
+
+            const mainInfo = await rpcCall(MAINNET_RPC, "getAccountInfo", [mint, { encoding: "jsonParsed" }]);
+            if (mainInfo?.value) {
+                return { network: "Mainnet", rpc: MAINNET_RPC, account: mainInfo.value };
+            }
+
+            throw new Error("Token Mint address Devnet ba Mainnet kothao pawa jayni!");
+        }
+
+        function extractTestnetPoints(raw) {
+            if (!raw) return null;
+
+            if (raw.includes("<")) {
+                try {
+                    const doc = new DOMParser().parseFromString(raw, "text/html");
+                    const divs = doc.querySelectorAll("div");
+                    for (const div of divs) {
+                        if (div.children.length === 0 && div.textContent.trim() === "Testnet Points") {
+                            const wrapper = div.parentElement?.parentElement || div.parentElement;
+                            const span = wrapper?.querySelector("span");
+                            if (span && span.textContent.trim()) {
+                                return span.textContent.trim();
+                            }
+                        }
+                    }
+                } catch (_) {}
+
+                const htmlMatch = raw.match(/Testnet Points[\s\S]{0,280}?<span[^>]*>([\d,.]+)<\/span>/i);
+                if (htmlMatch && htmlMatch[1]) {
+                    return htmlMatch[1].trim();
+                }
+            }
+
+            const mdMatch = raw.match(/Testnet Points[\s\S]{0,140}?Earned during the current testnet\s+([\d,]+(?:\.\d+)?)/i);
+            if (mdMatch && mdMatch[1]) {
+                return mdMatch[1].trim();
+            }
+
+            const simpleMatch = raw.match(/Testnet Points\s+([\d,]+(?:\.\d+)?)/i);
+            if (simpleMatch && simpleMatch[1]) {
+                return simpleMatch[1].trim();
+            }
+
+            return null;
+        }
+
+        // Built-in Mobile & Desktop CORS Proxy Rotation (zero extensions needed)
+        async function fetchViaCorsProxyPool(profileUrl) {
+            const proxies = [
+                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`, json: true },
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(profileUrl)}`, json: false },
+                { url: `https://corsproxy.io/?${encodeURIComponent(profileUrl)}`, json: false }
+            ];
+
+            const start = proxyRotationIndex++ % proxies.length;
+            for (let i = 0; i < proxies.length; i++) {
+                const proxy = proxies[(start + i) % proxies.length];
+                try {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 10000);
+                    const res = await fetch(proxy.url, { signal: controller.signal });
+                    clearTimeout(timer);
+
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                    if (!res.ok) continue;
+
+                    const html = proxy.json ? (await res.json())?.contents : await res.text();
+                    if (!html) continue;
+                    if (html.includes("Just a moment...") || html.includes("Attention Required! | Cloudflare")) continue;
+
+                    const pts = extractTestnetPoints(html);
+                    if (pts !== null) {
+                        return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
+                    }
+                    if (html.includes("_next") && (html.includes("Helm") || html.includes("Star Trader"))) {
+                        return { status: "ok", display: "0", numeric: 0 };
+                    }
+                } catch (_) {}
+            }
+            return null;
+        }
+
+        // Fetches single wallet points natively from browser (Mobile + Desktop compatible)
+        async function fetchWalletTestnetPoints(wallet) {
+            const profileUrl = `https://helm.trading/profile/${wallet}`;
+
+            // Optional 1: User's Custom Cloudflare Worker / Local Proxy (if provided in settings)
+            const customProxy = document.getElementById("proxyInput").value.trim();
+            if (customProxy) {
+                try {
+                    const fullProxyUrl = customProxy.includes("?")
+                        ? `${customProxy}${encodeURIComponent(profileUrl)}`
+                        : `${customProxy.replace(/\/$/, "")}/?url=${encodeURIComponent(profileUrl)}`;
+
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 12000);
+                    const res = await fetch(fullProxyUrl, { signal: controller.signal });
+                    clearTimeout(timer);
+
+                    if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+                    if (res.ok) {
+                        const html = await res.text();
+                        const pts = extractTestnetPoints(html);
+                        if (pts !== null) {
+                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
+                        }
+                        if (html.includes("_next")) {
+                            return { status: "ok", display: "0", numeric: 0 };
+                        }
+                    }
+                } catch (_) {}
+            }
+
+            // Primary Built-in Bridge: Jina Reader API (works directly on Mobile & Desktop)
+            try {
+                const jinaKey = getActiveJinaKey();
+                const headers = {
+                    "Accept": "text/plain",
+                    "X-Return-Format": "markdown",
+                    "X-With-Generated-Alt": "false"
+                };
+                if (jinaKey) {
+                    headers["Authorization"] = `Bearer ${jinaKey}`;
+                }
+
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 14000);
+                const res = await fetch(`https://r.jina.ai/${profileUrl}`, {
+                    headers,
+                    signal: controller.signal
+                });
+                clearTimeout(timer);
+
+                if (res.status === 404) return { status: "ok", display: "0", numeric: 0 };
+
+                if (res.ok) {
+                    const text = await res.text();
+                    if (!text.includes("Just a moment...") && !text.includes("Attention Required! | Cloudflare")) {
+                        const pts = extractTestnetPoints(text);
+                        if (pts !== null) {
+                            return { status: "ok", display: pts, numeric: Number(pts.replace(/,/g, "")) || 0 };
+                        }
+                        if (text.includes("Star Trader") || text.includes("No bio") || text.includes("PnL Curve")) {
+                            return { status: "ok", display: "0", numeric: 0 };
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            // Secondary Built-in Bridge: Rotating Public CORS Proxies (if Jina hits rate limit)
+            const fb = await fetchViaCorsProxyPool(profileUrl);
+            if (fb) return fb;
+
+            return { status: "ratelimit", display: "Cooldown", numeric: -1 };
+        }
+
+        function formatPointsCell(wallet) {
+            const entry = pointsCache.get(wallet);
+            const profileUrl = `https://helm.trading/profile/${wallet}`;
+
+            if (!entry || entry.status === "queued") {
+                return `<span class="points-muted"><i class="fa-regular fa-clock"></i> Queued</span>`;
+            }
+            if (entry.status === "loading") {
+                return `<span class="points-muted"><i class="fa-solid fa-spinner fa-spin"></i> Fetching...</span>`;
+            }
+            if (entry.status === "ratelimit") {
+                return `<span class="points-wait"><i class="fa-solid fa-hourglass-half"></i> Cooldown...</span>`;
+            }
+            if (entry.status === "error") {
+                return `
+                    <span class="points-err-wrap">
+                        <button class="retry-inline-btn" onclick="retrySingleWallet('${wallet}')" title="Retry fetching points">
+                            <i class="fa-solid fa-rotate-right"></i> Retry
+                        </button>
+                        <a href="${profileUrl}" target="_blank" rel="noopener" class="ext-link-icon" title="Open Helm Profile">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </span>
+                `;
+            }
+            return `<a href="${profileUrl}" target="_blank" rel="noopener" class="points-link" title="View on Helm Trading">${entry.display}</a>`;
+        }
+
+        function updateSinglePointsCell(wallet) {
+            const cell = document.getElementById(`pts-${wallet}`);
+            if (cell) {
+                cell.innerHTML = formatPointsCell(wallet);
+            }
+        }
+
+        function updateGlobalStatsProgress() {
+            const total = allHolders.length;
+            const done = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+            const el = document.getElementById("statPointsProgress");
+            if (el) {
+                el.textContent = `${done.toLocaleString()} / ${total.toLocaleString()}`;
+            }
+        }
+
+        function updateControlButtons() {
+            const retryBtn = document.getElementById("retryAllBtn");
+            const hasFailedAnywhere = allHolders.some((h) => pointsCache.get(h.wallet)?.status === "error");
+            retryBtn.style.display = hasFailedAnywhere ? "inline-flex" : "none";
+        }
+
+        async function retrySingleWallet(wallet) {
+            pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
+            updateSinglePointsCell(wallet);
+            const result = await fetchWalletTestnetPoints(wallet);
+            if (result.status === "ok") {
+                pointsCache.set(wallet, result);
+                schedulePersistCache();
+            } else {
+                pointsCache.set(wallet, { status: "error", display: "Failed", numeric: -1 });
+            }
+            updateSinglePointsCell(wallet);
+            updateGlobalStatsProgress();
+            updateControlButtons();
+        }
+
+        function togglePauseFetch() {
+            isFetchPaused = !isFetchPaused;
+            const btn = document.getElementById("pauseResumeBtn");
+            if (isFetchPaused) {
+                globalWorkerId++;
+                btn.innerHTML = '<i class="fa-solid fa-play"></i> Resume Fetch';
+                for (const h of allHolders) {
+                    const st = pointsCache.get(h.wallet)?.status;
+                    if (st === "loading" || st === "ratelimit") {
+                        pointsCache.set(h.wallet, { status: "queued", display: "...", numeric: -1 });
+                        updateSinglePointsCell(h.wallet);
+                    }
+                }
+                const done = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+                document.getElementById("status").className = "status";
+                document.getElementById("status").textContent = `>_ Paused (${done}/${allHolders.length} checked). Click "Resume Fetch" to continue across all pages.`;
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause Fetch';
+                startGlobalPointsQueue(currentScanId, false);
+            }
+            updateControlButtons();
+        }
+
+        // Picks the next wallet to check: prioritizes whichever page the user is currently viewing, then continues through ALL pages
+        function claimNextPendingWallet(claimedSet) {
+            // 1. Priority: un-checked wallets on the active page you're looking at
+            for (const h of currentVisibleSlice) {
+                if (claimedSet.has(h.wallet)) continue;
+                const st = pointsCache.get(h.wallet)?.status;
+                if (st === "queued" || st === "ratelimit") {
+                    claimedSet.add(h.wallet);
+                    return h.wallet;
+                }
+            }
+            // 2. Global continuation: all remaining un-checked wallets across Page 1, 2, 3...
+            for (const h of allHolders) {
+                if (claimedSet.has(h.wallet)) continue;
+                const st = pointsCache.get(h.wallet)?.status;
+                if (st === "queued" || st === "ratelimit") {
+                    claimedSet.add(h.wallet);
+                    return h.wallet;
+                }
+            }
+            return null;
+        }
+
+        // Continuous global background loop: keeps checking all holders regardless of which page you switch to
+        async function startGlobalPointsQueue(scanId, forceRetry = false) {
+            if (!allHolders.length) return;
+
+            isFetchPaused = false;
+            const pauseBtn = document.getElementById("pauseResumeBtn");
+            pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause Fetch';
+            pauseBtn.style.display = "inline-flex";
+
+            const workerId = ++globalWorkerId;
+            const status = document.getElementById("status");
+            const hasJinaKey = Boolean(getActiveJinaKey());
+            const hasCustomProxy = Boolean(document.getElementById("proxyInput").value.trim());
+
+            // Mark all un-cached holders across ALL pages as queued
+            for (const h of allHolders) {
+                const cached = pointsCache.get(h.wallet);
+                if (!cached || (forceRetry && (cached.status === "error" || cached.status === "ratelimit"))) {
+                    pointsCache.set(h.wallet, { status: "queued", display: "...", numeric: -1 });
+                    updateSinglePointsCell(h.wallet);
+                }
+            }
+
+            updateGlobalStatsProgress();
+            updateControlButtons();
+
+            const concurrency = hasCustomProxy ? 4 : 2;
+            const delayMs = hasCustomProxy ? 150 : (hasJinaKey ? 350 : 750);
+
+            let pass = 0;
+            const maxPasses = 20;
+
+            while (pass < maxPasses) {
+                if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
+
+                const totalRemaining = allHolders.filter((h) => {
+                    const st = pointsCache.get(h.wallet)?.status;
+                    return st === "queued" || st === "ratelimit";
+                }).length;
+
+                if (totalRemaining === 0) break;
+
+                const claimedInRound = new Set();
+                let consecutiveBlocks = 0;
+                let shouldCooldown = false;
+
+                async function worker() {
+                    while (true) {
+                        if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
+                        if (shouldCooldown) return;
+
+                        const wallet = claimNextPendingWallet(claimedInRound);
+                        if (!wallet) return;
+
+                        pointsCache.set(wallet, { status: "loading", display: "...", numeric: -1 });
+                        updateSinglePointsCell(wallet);
+
+                        const result = await fetchWalletTestnetPoints(wallet);
+                        if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
+
+                        if (result.status === "ok") {
+                            consecutiveBlocks = 0;
+                            pointsCache.set(wallet, result);
+                            updateSinglePointsCell(wallet);
+                            updateGlobalStatsProgress();
+                            schedulePersistCache();
+
+                            const globalDone = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+                            const pageDone = currentVisibleSlice.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+                            status.className = "status ok";
+                            status.textContent = `>_ Global Points: ${globalDone}/${allHolders.length} checked (Page ${currentPage}: ${pageDone}/${currentVisibleSlice.length}) — Running across all pages...`;
+                        } else {
+                            pointsCache.set(wallet, { status: "ratelimit", display: "Cooldown", numeric: -1 });
+                            updateSinglePointsCell(wallet);
+                            consecutiveBlocks++;
+                            if (consecutiveBlocks >= 3) {
+                                shouldCooldown = true;
+                                return;
+                            }
+                        }
+
+                        if (delayMs > 0) await sleep(delayMs);
+                    }
+                }
+
+                await Promise.all(Array.from({ length: concurrency }, () => worker()));
+
+                if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
+
+                // Ensure any stranded loading items revert to ratelimit for the next pass
+                for (const h of allHolders) {
+                    if (pointsCache.get(h.wallet)?.status === "loading") {
+                        pointsCache.set(h.wallet, { status: "ratelimit", display: "Cooldown", numeric: -1 });
+                        updateSinglePointsCell(h.wallet);
+                    }
+                }
+
+                const stillRemaining = allHolders.filter((h) => {
+                    const st = pointsCache.get(h.wallet)?.status;
+                    return st === "queued" || st === "ratelimit";
+                }).length;
+
+                if (stillRemaining === 0) break;
+
+                pass++;
+                if (pass >= maxPasses) {
+                    for (const h of allHolders) {
+                        const st = pointsCache.get(h.wallet)?.status;
+                        if (st === "queued" || st === "ratelimit") {
+                            pointsCache.set(h.wallet, { status: "error", display: "Failed", numeric: -1 });
+                            updateSinglePointsCell(h.wallet);
+                        }
+                    }
+                    break;
+                }
+
+                const globalDoneNow = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+                for (let sec = 12; sec > 0; sec--) {
+                    if (scanId !== currentScanId || workerId !== globalWorkerId || isFetchPaused) return;
+                    status.className = "status";
+                    status.textContent = `>_ Global Points: ${globalDoneNow}/${allHolders.length} checked. Server cooldown: auto-continuing ${stillRemaining} remaining in ${sec}s...`;
+                    await sleep(1000);
+                }
+            }
+
+            if (scanId !== currentScanId || workerId !== globalWorkerId) return;
+
+            pauseBtn.style.display = "none";
+            updateGlobalStatsProgress();
+            updateControlButtons();
+
+            const okCount = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "ok").length;
+            const errCount = allHolders.filter((h) => pointsCache.get(h.wallet)?.status === "error").length;
+
+            if (errCount > 0) {
+                status.className = "status error";
+                status.textContent = `>_ Complete: Loaded ${okCount}/${allHolders.length} points (${errCount} failed). Click "Retry Failed".`;
+            } else {
+                status.className = "status ok";
+                status.textContent = `>_ Complete! All ${okCount}/${allHolders.length} Helm Testnet Points checked across all pages!`;
+            }
+
+            if (sortField === "points") {
+                renderTable();
+            }
+        }
+
+        function retryAllFailedPoints() {
+            if (!allHolders.length) return;
+            startGlobalPointsQueue(currentScanId, true);
+        }
+
+        async function scanHolders() {
+            const mint = document.getElementById("mintInput").value.trim();
+            const customRpc = document.getElementById("rpcInput").value.trim();
+            const status = document.getElementById("status");
+            const scanBtn = document.getElementById("scanBtn");
+
+            if (!mint) {
+                status.className = "status error";
+                status.textContent = ">_ Error: Token Mint address dite hobe.";
+                return;
+            }
+
+            const scanId = ++currentScanId;
+            globalWorkerId++; // Stop any previous token's background worker
+            scanBtn.disabled = true;
+            document.getElementById("copyAllBtn").disabled = true;
+            document.getElementById("csvBtn").disabled = true;
+            document.getElementById("retryAllBtn").style.display = "none";
+            document.getElementById("pauseResumeBtn").style.display = "none";
+            status.className = "status";
+            status.textContent = customRpc
+                ? ">_ Connecting to your custom RPC..."
+                : ">_ Detecting network & checking mint info...";
+
+            try {
+                const { network, rpc, account } = await resolveRpcAndMint(mint, customRpc);
+                const programId = account.owner;
+
+                status.textContent = `>_ Connected (${network}). Fetching all holder accounts...`;
+
+                const filters = [{ memcmp: { offset: 0, bytes: mint } }];
+                if (programId === "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") {
+                    filters.unshift({ dataSize: 165 });
+                }
+
+                const accounts = await rpcCall(rpc, "getProgramAccounts", [
+                    programId,
+                    { encoding: "jsonParsed", filters }
+                ]);
+
+                const holdersMap = new Map();
+                for (const item of accounts) {
+                    const info = item.account?.data?.parsed?.info;
+                    if (!info) continue;
+                    const amount = Number(info.tokenAmount?.uiAmountString ?? 0);
+                    if (amount <= 0) continue;
+                    const owner = info.owner;
+                    holdersMap.set(owner, (holdersMap.get(owner) || 0) + amount);
+                }
+
+                allHolders = [...holdersMap.entries()]
+                    .map(([wallet, balance]) => ({ wallet, balance }))
+                    .sort((a, b) => b.balance - a.balance);
+
+                totalHeldSupply = allHolders.reduce((sum, h) => sum + h.balance, 0);
+
+                sortField = "balance";
+                sortOrder = "desc";
+                currentPage = 1;
+                updateSortUI();
+
+                document.getElementById("statNetwork").textContent = network;
+                document.getElementById("statCount").textContent = allHolders.length.toLocaleString();
+                document.getElementById("statSupply").textContent = totalHeldSupply.toLocaleString(undefined, { maximumFractionDigits: 6 });
+                updateGlobalStatsProgress();
+
+                document.getElementById("statsSection").style.display = "grid";
+                document.getElementById("resultsCard").style.display = "block";
+                document.getElementById("copyAllBtn").disabled = allHolders.length === 0;
+                document.getElementById("csvBtn").disabled = allHolders.length === 0;
+
+                status.className = "status ok";
+                status.textContent = `>_ Found ${allHolders.length.toLocaleString()} active holders (${network}). Starting continuous Testnet Points scan across all pages...`;
+
+                renderTable();
+                if (allHolders.length > 0) {
+                    startGlobalPointsQueue(scanId, false);
+                }
+            } catch (err) {
+                status.className = "status error";
+                status.textContent = ">_ Failed: " + err.message;
+            } finally {
+                scanBtn.disabled = false;
+            }
+        }
+
+        function toggleSort(field) {
+            if (sortField === field) {
+                sortOrder = sortOrder === "desc" ? "asc" : "desc";
+            } else {
+                sortField = field;
+                sortOrder = "desc";
+            }
+            currentPage = 1;
+            updateSortUI();
+            renderTable();
+        }
+
+        function updateSortUI() {
+            const fields = ["wallet", "balance", "share", "points"];
+            const labels = {
+                wallet: "Wallet",
+                balance: "Balance",
+                share: "Share %",
+                points: "Testnet Points"
+            };
+            const dirLabel = sortOrder === "desc" ? "Max &rarr; Min" : "Min &rarr; Max";
+
+            for (const f of fields) {
+                const th = document.getElementById(`th-${f}`);
+                const iconSlot = document.getElementById(`sort-icon-${f}`);
+                if (!th || !iconSlot) continue;
+
+                if (f === sortField) {
+                    th.classList.add("active-sort");
+                    iconSlot.innerHTML = `<span class="sort-badge">${dirLabel}</span>`;
+                } else {
+                    th.classList.remove("active-sort");
+                    iconSlot.innerHTML = `<i class="fa-solid fa-sort sort-icon-idle"></i>`;
+                }
+            }
+
+            const indicator = document.getElementById("sortIndicator");
+            if (indicator) {
+                indicator.innerHTML = `Sort: <span>${labels[sortField]} (${dirLabel})</span>`;
+            }
+        }
+
+        function getSortedHolders() {
+            const list = [...allHolders];
+            const mult = sortOrder === "desc" ? -1 : 1;
+
+            list.sort((a, b) => {
+                if (sortField === "balance" || sortField === "share") {
+                    return (a.balance - b.balance) * mult;
+                }
+                if (sortField === "points") {
+                    const entryA = pointsCache.get(a.wallet);
+                    const entryB = pointsCache.get(b.wallet);
+                    const validA = entryA && entryA.status === "ok";
+                    const validB = entryB && entryB.status === "ok";
+
+                    if (validA && !validB) return -1;
+                    if (!validA && validB) return 1;
+                    if (!validA && !validB) return 0;
+
+                    return (entryA.numeric - entryB.numeric) * mult;
+                }
+                if (sortField === "wallet") {
+                    return a.wallet.localeCompare(b.wallet) * mult;
+                }
+                return 0;
+            });
+
+            return list;
+        }
+
+        function onSearchChange() {
+            currentPage = 1;
+            renderTable();
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderTable();
+            document.getElementById("resultsCard").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function jumpToPage() {
+            const input = document.getElementById("pageJumpInput");
+            const val = parseInt(input.value, 10);
+            if (!isNaN(val) && val >= 1) {
+                goToPage(val);
+            }
+        }
+
+        function renderPagination(totalItems, totalPages) {
+            const bar = document.getElementById("paginationBar");
+            const controls = document.getElementById("pageControls");
+            const infoText = document.getElementById("pageInfoText");
+            const jumpInput = document.getElementById("pageJumpInput");
+
+            if (totalItems === 0) {
+                bar.style.display = "none";
+                return;
+            }
+
+            bar.style.display = "flex";
+            infoText.textContent = `Page ${currentPage} of ${totalPages}`;
+            jumpInput.max = totalPages;
+            jumpInput.value = "";
+
+            const pages = [];
+            if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                if (currentPage > 3) pages.push("...");
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (currentPage < totalPages - 2) pages.push("...");
+                pages.push(totalPages);
+            }
+
+            let html = `
+                <button class="page-btn" onclick="goToPage(1)" ${currentPage === 1 ? "disabled" : ""}>&laquo; First</button>
+                <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? "disabled" : ""}>&lsaquo; Prev</button>
+            `;
+
+            for (const p of pages) {
+                if (p === "...") {
+                    html += `<span class="page-dots">...</span>`;
+                } else {
+                    html += `<button class="page-btn ${p === currentPage ? "active" : ""}" onclick="goToPage(${p})">${p}</button>`;
+                }
+            }
+
+            html += `
+                <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? "disabled" : ""}>Next &rsaquo;</button>
+                <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? "disabled" : ""}>Last &raquo;</button>
+            `;
+
+            controls.innerHTML = html;
+        }
+
+        // Purely renders the active page without interrupting the continuous global background queue
+        function renderTable() {
+            const q = document.getElementById("searchInput").value.trim().toLowerCase();
+            const sorted = getSortedHolders();
+            const filtered = q
+                ? sorted.filter((h) => h.wallet.toLowerCase().includes(q))
+                : sorted;
+
+            const totalItems = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIdx = (currentPage - 1) * PAGE_SIZE;
+            const endIdx = Math.min(startIdx + PAGE_SIZE, totalItems);
+            currentVisibleSlice = filtered.slice(startIdx, endIdx);
+
+            document.getElementById("filterCount").textContent = totalItems > 0
+                ? `Showing ${startIdx + 1}–${endIdx} of ${totalItems} holders`
+                : `Showing 0 of ${allHolders.length} holders`;
+
+            const tbody = document.getElementById("tbody");
+            tbody.innerHTML = currentVisibleSlice
+                .map((h, idx) => {
+                    const globalRank = startIdx + idx + 1;
+                    const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(2) : "0.00";
+                    return `
+                        <tr>
+                            <td class="mono">${globalRank}</td>
+                            <td class="mono">${h.wallet}</td>
+                            <td class="mono">${h.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
+                            <td class="mono">${share}%</td>
+                            <td id="pts-${h.wallet}" class="mono">${formatPointsCell(h.wallet)}</td>
+                            <td><button class="btn copy-mini" onclick="copyOne('${h.wallet}', this)"><i class="fa-regular fa-copy"></i> Copy</button></td>
+                        </tr>
+                    `;
+                })
+                .join("");
+
+            renderPagination(totalItems, totalPages);
+            updateControlButtons();
+        }
+
+        function copyOne(wallet, btn) {
+            navigator.clipboard.writeText(wallet);
+            const old = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+            setTimeout(() => (btn.innerHTML = old), 1200);
+        }
+
+        function copyAllWallets() {
+            if (!allHolders.length) return;
+            navigator.clipboard.writeText(getSortedHolders().map((h) => h.wallet).join("\n"));
+            const status = document.getElementById("status");
+            status.className = "status ok";
+            status.textContent = `>_ Copied ${allHolders.length} wallet addresses to clipboard!`;
+        }
+
+        function downloadCSV() {
+            if (!allHolders.length) return;
+            const rows = [
+                "Rank,Wallet Address,Balance,Share (%),Testnet Points",
+                ...getSortedHolders().map((h, i) => {
+                    const share = totalHeldSupply > 0 ? ((h.balance / totalHeldSupply) * 100).toFixed(4) : "0";
+                    const pts = pointsCache.get(h.wallet)?.display ?? "Not Loaded";
+                    return `${i + 1},${h.wallet},${h.balance},${share}%,"${pts}"`;
+                })
+            ];
+            const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `holders_${document.getElementById("mintInput").value.trim().slice(0, 8)}.csv`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
